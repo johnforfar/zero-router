@@ -1,0 +1,12 @@
+steps:
+- name: 'gcr.io/cloud-builders/docker'
+  args: [
+    'build',
+    '-t', 'us-central1-docker.pkg.dev/xnode-ai/zerorouter/frontend:latest',
+    '--build-arg', 'NEXT_PUBLIC_ZEROROUTER_API_URL=https://api.zerorouter.xyz',
+    '--build-arg', 'NEXT_PUBLIC_DEMO_WALLET=2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm',
+    '--build-arg', 'NEXT_PUBLIC_PROGRAM_ID=scr8KCMrUgArFL7bamxFccwbYhxRv4qpWb1auhomeSE',
+    '.'
+  ]
+images:
+- 'us-central1-docker.pkg.dev/xnode-ai/zerorouter/frontend:latest'

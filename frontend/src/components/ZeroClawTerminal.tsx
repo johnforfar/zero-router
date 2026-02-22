@@ -191,11 +191,9 @@ export function ZeroClawTerminal() {
                       setUsdcBalance(prev => prev - COST_PER_TOKEN);
 
                       tokenCount++;
-                      // Batch to ER every 5 tokens to prevent RPC spam while keeping precision
-                      if (tokenCount % 5 === 0) {
-                          const txId = Math.random().toString(36).substring(2, 10);
-                          addRollupLog(`⚡ [TX: ${txId}] settlement_tick(5 tokens) | burn: ${(COST_PER_TOKEN * 5).toFixed(5)} USDC`);
-                      }
+                      // SETTLEMENT TICK: EVERY SINGLE TOKEN (PUSH TO THE LIMIT)
+                      const txId = Math.random().toString(36).substring(2, 10);
+                      addRollupLog(`⚡ [TX: ${txId}] per_token_settle(1) | burn: ${COST_PER_TOKEN.toFixed(6)} USDC`);
                   }
               } catch (e) {}
           }

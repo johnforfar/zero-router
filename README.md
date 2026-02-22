@@ -55,6 +55,9 @@ The system is pre-configured for a **Zero-Friction Demo**.
 - **Public Key**: `2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm`
 - **Setup**: I have configured the protocol to show this as the default demo wallet. Fund this address on devnet to activate the live state-settlement visualization.
 
+### 🤖 AI Agent Integration
+ZeroRouter is built for machines first. Agents can discover and use this protocol via the **[AI Skill Specification](./skill.md)**.
+
 ### 🛡️ Production & DevOps
 - **CI/CD**: Automated GitHub Actions deploy code from `main` branch to GCP.
 - **Privacy**: Zero hardcoded keys in the source. All secrets are managed via **GitHub Secrets** and **Cloud Run Environment Variables**.
