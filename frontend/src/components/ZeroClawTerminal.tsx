@@ -494,21 +494,33 @@ export function ZeroClawTerminal() {
   return (
     <div className={`flex flex-col h-full ${theme.bg} ${theme.text} font-mono text-xs overflow-hidden transition-colors duration-300`}>
         {/* Header */}
-        <div className={`flex justify-between items-center p-3 border-b ${theme.headerBorder} ${theme.headerBg} shadow-sm z-10`}>
-            <div className="flex items-center space-x-2">
-                <Terminal size={16} className={isDarkMode ? "text-blue-400" : "text-blue-600"} />
-                <span className={`font-bold text-lg tracking-tight ${theme.headerText}`}>ZEROCLAW_TERMINAL_V1</span>
+        <div className={`flex flex-col md:flex-row justify-between items-center p-3 border-b ${theme.headerBorder} ${theme.headerBg} shadow-sm z-10 gap-3 md:gap-0`}>
+            <div className="flex items-center justify-between w-full md:w-auto space-x-2">
+                <div className="flex items-center space-x-2">
+                    <Terminal size={16} className={isDarkMode ? "text-blue-400" : "text-blue-600"} />
+                    <span className={`font-bold text-lg tracking-tight ${theme.headerText}`}>ZEROROUTER_V1</span>
+                </div>
+                <div className="flex md:hidden items-center space-x-2">
+                    <button 
+                        onClick={() => setIsDarkMode(!isDarkMode)} 
+                        className={`transition-colors p-2 rounded-full hover:bg-blue-500/10`}
+                    >
+                        {isDarkMode ? <Sun size={14}/> : <Moon size={14}/>}
+                    </button>
+                    <button onClick={handleReset} className={`transition-colors p-2`}><RotateCcw size={14}/></button>
+                </div>
             </div>
-            <div className="flex items-center space-x-6 text-sm font-medium">
-                <div className="flex items-center gap-2 mr-2">
+            
+            <div className="flex flex-wrap items-center justify-center md:justify-end gap-3 md:space-x-6 text-[10px] md:text-sm font-medium w-full md:w-auto">
+                <div className="flex items-center gap-2">
                     <div className="relative">
                         <select
                             value={selectedModel}
                             onChange={(e) => setSelectedModel(e.target.value)}
-                            className={`appearance-none bg-slate-900/50 border ${theme.statBorder} ${theme.statText} text-[10px] font-bold px-3 py-1 rounded-full outline-none hover:border-blue-500 transition-all cursor-pointer pr-6`}
+                            className={`appearance-none bg-slate-900/50 border ${theme.statBorder} ${theme.statText} text-[9px] md:text-[10px] font-bold px-2 md:px-3 py-1 rounded-full outline-none hover:border-blue-500 transition-all cursor-pointer pr-5 md:pr-6`}
                         >
                             <option value="gemini-2.0-flash">Gemini 2 Flash</option>
-                            <option value="ollama-llama3.2" disabled>Ollama Llama3.2 (coming soon)</option>
+                            <option value="ollama-llama3.2" disabled>Llama3.2 (soon)</option>
                         </select>
                         <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-blue-500" />
                     </div>
@@ -517,12 +529,12 @@ export function ZeroClawTerminal() {
                     href={`https://explorer.solana.com/address/${connected && publicKey ? publicKey.toBase58() : demoWallet}?cluster=devnet`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className={`flex items-center space-x-4 hover:bg-blue-50/10 p-2 rounded-md transition-colors cursor-pointer group`}
+                    className={`flex items-center space-x-3 md:space-x-4 hover:bg-blue-50/10 p-1.5 md:p-2 rounded-md transition-colors cursor-pointer group`}
                     title="View Wallet on Explorer"
                 >
-                    <div className="flex items-center space-x-2">
-                        <Coins size={14} className="text-yellow-500 group-hover:scale-110 transition-transform" />
-                        <span className={isDarkMode ? "text-blue-200" : "text-slate-700"}>{solBalance.toFixed(4)} SOL</span>
+                    <div className="flex items-center space-x-1.5 md:space-x-2">
+                        <Coins size={12} className="text-yellow-500 group-hover:scale-110 transition-transform" />
+                        <span className={isDarkMode ? "text-blue-200" : "text-slate-700"}>{solBalance.toFixed(3)} SOL</span>
                     </div>
                      <div className="flex items-center space-x-1">
                         <span className="text-blue-500 font-bold">$</span>
@@ -530,44 +542,47 @@ export function ZeroClawTerminal() {
                     </div>
                 </a>
                 <div className="flex items-center space-x-2">
-                    <Activity size={14} className={sessionActive ? "text-green-500 animate-pulse" : "text-gray-400"} />
+                    <Activity size={12} className={sessionActive ? "text-green-500 animate-pulse" : "text-gray-400"} />
                     <span className={sessionActive ? "text-green-500 font-bold" : "text-gray-400"}>
                         {sessionActive ? (
-                            <span className="flex items-center gap-2">
-                                UPLINK_ACTIVE
-                                <span className="bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded text-[9px] border border-blue-500/30">
-                                    AUTO-SETTLE: {15 - idleSeconds}s
+                            <span className="flex items-center gap-1.5">
+                                <span className="hidden sm:inline">UPLINK_ACTIVE</span>
+                                <span className="sm:hidden text-[9px]">ACTIVE</span>
+                                <span className="bg-blue-500/20 text-blue-400 px-1 py-0.5 rounded text-[8px] md:text-[9px] border border-blue-500/30 whitespace-nowrap">
+                                    {15 - idleSeconds}s
                                 </span>
                             </span>
                         ) : "STANDBY"}
                     </span>
                 </div>
-                 <button 
-                    onClick={() => setIsDarkMode(!isDarkMode)} 
-                    className={`hover:${theme.text} transition-colors p-1 rounded-full hover:bg-blue-500/10`}
-                    title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-                 >
-                    {isDarkMode ? <Sun size={14}/> : <Moon size={14}/>}
-                 </button>
-                 <button onClick={handleReset} className={`hover:${theme.text} transition-colors p-1`}><RotateCcw size={14}/></button>
+                <div className="hidden md:flex items-center space-x-4">
+                    <button 
+                        onClick={() => setIsDarkMode(!isDarkMode)} 
+                        className={`hover:${theme.text} transition-colors p-1 rounded-full hover:bg-blue-500/10`}
+                        title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                    >
+                        {isDarkMode ? <Sun size={14}/> : <Moon size={14}/>}
+                    </button>
+                    <button onClick={handleReset} className={`hover:${theme.text} transition-colors p-1`}><RotateCcw size={14}/></button>
+                </div>
             </div>
         </div>
 
         {/* Main Content */}
-        <div className="flex flex-1 overflow-hidden relative z-0">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden relative z-0">
             {/* Left Panel: Chat/Terminal */}
-            <div className={`flex-1 flex flex-col border-r ${theme.panelBorder} ${theme.panelBg} backdrop-blur-sm`}>
+            <div className={`flex-[2] flex flex-col border-b md:border-b-0 md:border-r ${theme.panelBorder} ${theme.panelBg} backdrop-blur-sm overflow-hidden`}>
                  {/* Tabs */}
                 <div className={`flex border-b ${theme.tabBorder}`}>
                     <button 
                         onClick={() => setActiveTab("ai-chat")}
-                        className={`flex-1 p-3 text-center font-medium transition-all ${activeTab === "ai-chat" ? theme.tabActive : theme.tabInactive}`}
+                        className={`flex-1 p-3 text-center font-medium transition-all text-[10px] md:text-xs ${activeTab === "ai-chat" ? theme.tabActive : theme.tabInactive}`}
                     >
-                        AI_INFERENCE_STREAM
+                        AI_INFERENCE
                     </button>
                     <button
                          onClick={() => setActiveTab("zeroclaw")}
-                         className={`flex-1 p-3 text-center font-medium transition-all ${activeTab === "zeroclaw" ? theme.tabActive : theme.tabInactive} relative group`}
+                         className={`flex-1 p-3 text-center font-medium transition-all text-[10px] md:text-xs ${activeTab === "zeroclaw" ? theme.tabActive : theme.tabInactive} relative group`}
                     >
                         ZEROCLAW_AGENT
                         <span className="absolute -top-1 -right-1 flex h-2 w-2">
@@ -578,22 +593,22 @@ export function ZeroClawTerminal() {
                 </div>
 
                 {/* Output Area */}
-                <div ref={inferenceScrollRef} className={`flex-1 overflow-y-auto p-6 space-y-2 text-sm leading-relaxed ${theme.outputText}`}>
+                <div ref={inferenceScrollRef} className={`flex-1 overflow-y-auto p-4 md:p-6 space-y-2 text-xs md:text-sm leading-relaxed ${theme.outputText}`}>
                     {activeTab === "ai-chat" ? (
                         <div className="flex flex-col space-y-4">
                             {inferenceLogs.map((log, i) => (
                                 <div key={i} className={`flex ${log.type === 'user' ? 'justify-end' : 'justify-start'}`}>
                                     {log.type === 'status' ? (
-                                        <div className="w-full text-center text-[10px] text-blue-500/60 font-bold tracking-widest uppercase py-2 border-y border-blue-900/20 my-2">
+                                        <div className="w-full text-center text-[9px] md:text-[10px] text-blue-500/60 font-bold tracking-widest uppercase py-2 border-y border-blue-900/20 my-1 md:my-2">
                                             {log.content}
                                         </div>
                                     ) : (
-                                        <div className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
+                                        <div className={`max-w-[90%] md:max-w-[85%] rounded-2xl px-3 md:px-4 py-2 md:py-3 shadow-sm ${
                                             log.type === 'user'
                                                 ? 'bg-blue-600 text-white rounded-tr-none border border-blue-500'
                                                 : 'bg-slate-900 text-blue-50 rounded-tl-none border border-blue-800/50'
                                         }`}>
-                                            <div className={`prose prose-sm ${log.type === 'user' ? 'prose-invert' : (isDarkMode ? "prose-invert prose-p:text-blue-100 prose-strong:text-blue-300" : "prose-blue")} max-w-none`}>
+                                            <div className={`prose prose-xs md:prose-sm ${log.type === 'user' ? 'prose-invert' : (isDarkMode ? "prose-invert prose-p:text-blue-100 prose-strong:text-blue-300" : "prose-blue")} max-w-none`}>
                                                 <ReactMarkdown>{log.content}</ReactMarkdown>
                                             </div>
                                         </div>
@@ -602,48 +617,48 @@ export function ZeroClawTerminal() {
                             ))}
                         </div>
                     ) : (
-                         <div className="flex flex-col items-center justify-center h-full space-y-4 opacity-50">
-                            <Cpu size={48} className="text-blue-500 animate-pulse" />
-                            <div className="text-xl font-bold tracking-widest text-blue-400">COMING SOON</div>
-                            <div className="text-xs text-blue-300/60 max-w-xs text-center leading-relaxed italic">
-                                Soveign AI agent execution and system command orchestration is currently under development.
+                         <div className="flex flex-col items-center justify-center h-full space-y-4 opacity-50 p-4">
+                            <Cpu size={40} className="text-blue-500 animate-pulse" />
+                            <div className="text-lg md:text-xl font-bold tracking-widest text-blue-400">COMING SOON</div>
+                            <div className="text-[10px] md:text-xs text-blue-300/60 max-w-xs text-center leading-relaxed italic">
+                                Sovereign AI agent execution and system command orchestration is currently under development.
                             </div>
                         </div>
                     )}
                 </div>
 
                 {/* Input Area */}
-                <form onSubmit={handleCommand} className={`p-4 border-t ${theme.inputBorder} flex items-center ${theme.inputBg} shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20`}>
-                    <ChevronRight size={18} className="mr-3 text-blue-500 animate-pulse" />
+                <form onSubmit={handleCommand} className={`p-3 md:p-4 border-t ${theme.inputBorder} flex items-center ${theme.inputBg} shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20`}>
+                    <ChevronRight size={18} className="mr-2 md:mr-3 text-blue-500 animate-pulse shrink-0" />
                     <input 
                         type="text" 
                         value={input} 
                         onChange={(e) => setInput(e.target.value)}
-                        className={`flex-1 bg-transparent outline-none border-none ${theme.inputText} ${theme.inputPlaceholder} text-base h-10 font-medium`}
-                        placeholder={activeTab === "ai-chat" ? "Enter query for sovereign intelligence..." : "Enter system command..."}
+                        className={`flex-1 bg-transparent outline-none border-none ${theme.inputText} ${theme.inputPlaceholder} text-sm md:text-base h-8 md:h-10 font-medium`}
+                        placeholder={activeTab === "ai-chat" ? "Enter query..." : "Enter command..."}
                         autoFocus
                     />
-                    {isTyping && <Loader2 size={18} className="animate-spin text-blue-500 ml-3" />}
+                    {isTyping && <Loader2 size={16} className="animate-spin text-blue-500 ml-2 md:ml-3 shrink-0" />}
                 </form>
             </div>
 
             {/* Right Panel: Ephemeral Rollup Ledger */}
-            <div className={`w-1/3 flex flex-col ${theme.ledgerBg} border-l ${theme.ledgerBorder} shadow-inner`}>
-                 <div className={`p-3 border-b ${theme.ledgerBorder} font-bold flex justify-between items-center ${theme.ledgerHeaderBg} ${theme.ledgerHeaderText}`}>
-                    <span>EPHEMERAL_ROLLUP_LEDGER</span>
-                    <Server size={14} className="text-blue-500"/>
+            <div className={`w-full md:w-1/3 flex flex-col h-1/3 md:h-full ${theme.ledgerBg} border-t md:border-t-0 md:border-l ${theme.ledgerBorder} shadow-inner overflow-hidden`}>
+                 <div className={`p-2 md:p-3 border-b ${theme.ledgerBorder} font-bold flex justify-between items-center ${theme.ledgerHeaderBg} ${theme.ledgerHeaderText} text-[10px] md:text-xs`}>
+                    <span className="truncate mr-2">EPHEMERAL_ROLLUP_LEDGER</span>
+                    <Server size={12} className="text-blue-500 shrink-0"/>
                 </div>
-                <div ref={rollupScrollRef} className="flex-1 overflow-y-auto p-3 space-y-2 text-[11px] font-mono">
+                <div ref={rollupScrollRef} className="flex-1 overflow-y-auto p-2 md:p-3 space-y-1.5 md:space-y-2 text-[10px] md:text-[11px] font-mono">
                     {ledgerEntries.map((entry, i) => (
-                        <div key={entry.id} className={`border ${theme.ledgerEntryBorder} p-2 rounded-md ${theme.ledgerEntryBg} shadow-sm hover:shadow-md transition-shadow`}>
+                        <div key={entry.id} className={`border ${theme.ledgerEntryBorder} p-1.5 md:p-2 rounded-md ${theme.ledgerEntryBg} shadow-sm hover:shadow-md transition-shadow`}>
                             <div className="flex items-start">
                                 <span 
-                                    className="mr-2 mt-0.5 text-lg cursor-pointer flex items-center hover:text-blue-400" 
+                                    className="mr-1.5 md:mr-2 mt-0.5 text-base md:text-lg cursor-pointer flex items-center hover:text-blue-400" 
                                     onClick={() => toggleEntry(entry.id)}
                                 >
                                     {entry.subEntries && entry.subEntries.length > 0 && (
-                                        <span className="mr-1">
-                                            {entry.isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                        <span className="mr-0.5 md:mr-1">
+                                            {entry.isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                                         </span>
                                     )}
                                     {entry.type === "tx" ? "📦" : entry.type === "settlement" ? "⚡" : "ℹ️"}
@@ -662,14 +677,14 @@ export function ZeroClawTerminal() {
                                                 }
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className={`ml-2 underline text-[10px] font-bold ${entry.type === "settlement" ? "text-yellow-500 hover:text-yellow-400" : "text-blue-500 hover:text-blue-400"}`}
+                                                className={`ml-1.5 md:ml-2 underline text-[9px] md:text-[10px] font-bold ${entry.type === "settlement" ? "text-yellow-500 hover:text-yellow-400" : "text-blue-500 hover:text-blue-400"}`}
                                             >
-                                                {entry.type === "settlement" ? "[ER_TX]" : "[VIEW_L1]"}
+                                                {entry.type === "settlement" ? "[ER_TX]" : "[L1]"}
                                             </a>
                                         )}
                                     </div>
                                     {entry.isExpanded && entry.subEntries && entry.subEntries.length > 0 && (
-                                         <div className={`mt-2 pl-3 border-l-2 ${theme.ledgerBorder} space-y-1.5`}>
+                                         <div className={`mt-1.5 md:mt-2 pl-2 md:pl-3 border-l-2 ${theme.ledgerBorder} space-y-1 md:space-y-1.5`}>
                                             {entry.subEntries.map((sub, j) => (
                                                 <div key={j} className="text-slate-400 truncate flex items-center justify-between">
                                                     <span>{sub.content}</span>
@@ -678,7 +693,7 @@ export function ZeroClawTerminal() {
                                                             href={`https://explorer.solana.com/tx/${sub.sig}?cluster=custom&customUrl=https%3A%2F%2Fdevnet-as.magicblock.app`}
                                                             target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="ml-2 text-yellow-500 underline hover:text-yellow-400 text-[9px] whitespace-nowrap font-bold"
+                                                            className="ml-2 text-yellow-500 underline hover:text-yellow-400 text-[8px] md:text-[9px] whitespace-nowrap font-bold"
                                                         >
                                                             [ER_TX]
                                                         </a>
@@ -694,22 +709,22 @@ export function ZeroClawTerminal() {
                 </div>
                 
                  {/* Stats Footer */}
-                <div className={`p-3 border-t ${theme.statBorder} grid grid-cols-2 gap-3 text-[11px] font-medium ${theme.statBg} ${theme.statText}`}>
+                <div className={`p-2 md:p-3 border-t ${theme.statBorder} grid grid-cols-2 gap-2 md:gap-3 text-[9px] md:text-[11px] font-medium ${theme.statBg} ${theme.statText}`}>
                      <div className="flex justify-between items-center">
-                        <span>LATENCY:</span>
-                        <span className={`px-1.5 py-0.5 rounded ${realLatency < 50 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>{realLatency.toFixed(1)}ms</span>
+                        <span className="mr-1">LATENCY:</span>
+                        <span className={`px-1 py-0.5 rounded ${realLatency < 50 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"} whitespace-nowrap`}>{realLatency.toFixed(1)}ms</span>
                     </div>
                      <div className="flex justify-between items-center">
-                        <span>TPS (ER):</span>
-                        <span className="text-blue-500">~1000</span>
+                        <span className="mr-1 truncate text-[8px] md:text-[10px]">TPS (ER):</span>
+                        <span className="text-blue-500 whitespace-nowrap">~1k</span>
                     </div>
                      <div className="flex justify-between items-center">
-                        <span>SESSION COST:</span>
-                        <span className={isDarkMode ? "text-blue-200" : "text-slate-800"}>{totalSpent.toFixed(4)} USDC</span>
+                        <span className="mr-1 truncate text-[8px] md:text-[10px]">TOTAL:</span>
+                        <span className={`${isDarkMode ? "text-blue-200" : "text-slate-800"} whitespace-nowrap`}>{totalSpent.toFixed(4)} USDC</span>
                     </div>
                      <div className="flex justify-between items-center">
-                        <span>STATUS:</span>
-                        <span className="text-green-500 flex items-center"><span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></span>ONLINE</span>
+                        <span className="mr-1 truncate text-[8px] md:text-[10px]">STATUS:</span>
+                        <span className="text-green-500 flex items-center whitespace-nowrap"><span className="w-1 md:w-1.5 h-1 md:h-1.5 bg-green-500 rounded-full mr-1 shrink-0"></span>ONLINE</span>
                     </div>
                 </div>
             </div>
