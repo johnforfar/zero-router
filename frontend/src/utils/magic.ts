@@ -16,42 +16,11 @@ const IDL: any = {
   "address": "8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z",
   "metadata": {
     "name": "zerorouter",
-    "version": "0.1.0",
-    "spec": "0.1.0",
-    "description": "Created with Anchor"
+    "version": "0.1.0"
   },
   "instructions": [
     {
-      "name": "close_session",
-      "discriminator": [68, 114, 178, 140, 222, 38, 248, 211],
-      "accounts": [
-        { "name": "session", "writable": true },
-        { "name": "vault", "writable": true },
-        { "name": "provider_token", "writable": true },
-        { "name": "payer", "writable": true, "signer": true },
-        { "name": "payer_token", "writable": true },
-        { "name": "token_program", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" }
-      ],
-      "args": []
-    },
-    {
-      "name": "delegate",
-      "discriminator": [90, 147, 75, 178, 85, 88, 4, 137],
-      "accounts": [
-        { "name": "payer", "signer": true },
-        { "name": "buffer_pda", "writable": true },
-        { "name": "delegation_record_pda", "writable": true },
-        { "name": "delegation_metadata_pda", "writable": true },
-        { "name": "pda", "writable": true },
-        { "name": "provider" },
-        { "name": "system_program", "address": "11111111111111111111111111111111" },
-        { "name": "owner_program", "address": "8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z" },
-        { "name": "delegation_program", "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh" }
-      ],
-      "args": []
-    },
-    {
-      "name": "initialize_session",
+      "name": "initialize_stream",
       "discriminator": [69, 130, 92, 236, 107, 231, 159, 129],
       "accounts": [
         { "name": "session", "writable": true },
@@ -70,25 +39,43 @@ const IDL: any = {
       ]
     },
     {
-      "name": "process_undelegation",
-      "discriminator": [196, 28, 41, 206, 48, 37, 51, 167],
-      "accounts": [
-        { "name": "base_account", "writable": true },
-        { "name": "buffer" },
-        { "name": "payer", "writable": true },
-        { "name": "system_program" }
-      ],
-      "args": [
-        { "name": "account_seeds", "type": { "vec": "bytes" } }
-      ]
-    },
-    {
-      "name": "record_usage",
+      "name": "tick",
       "discriminator": [185, 5, 42, 72, 185, 187, 202, 147],
       "accounts": [
         { "name": "session", "writable": true }
       ],
+      "args": [
+        { "name": "token_count", "type": "u64" }
+      ]
+    },
+    {
+      "name": "close_stream",
+      "discriminator": [68, 114, 178, 140, 222, 38, 248, 211],
+      "accounts": [
+        { "name": "session", "writable": true },
+        { "name": "vault", "writable": true },
+        { "name": "provider_token", "writable": true },
+        { "name": "payer", "writable": true, "signer": true },
+        { "name": "payer_token", "writable": true },
+        { "name": "token_program", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" }
+      ],
       "args": []
+    },
+    {
+        "name": "delegate",
+        "discriminator": [90, 147, 75, 178, 85, 88, 4, 137],
+        "accounts": [
+            { "name": "payer", "writable": true, "signer": true },
+            { "name": "pda", "writable": true },
+            { "name": "provider" },
+            { "name": "owner_program", "address": "8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z" },
+            { "name": "buffer", "writable": true },
+            { "name": "delegation_record", "writable": true },
+            { "name": "delegation_metadata", "writable": true },
+            { "name": "delegation_program", "address": "DELeGGvXpWV2fqJUhqcF5ZSYMS4JTLjteaAMARRSaeSh" },
+            { "name": "system_program", "address": "11111111111111111111111111111111" }
+        ],
+        "args": []
     }
   ],
   "accounts": [
@@ -96,10 +83,6 @@ const IDL: any = {
       "name": "SessionAccount",
       "discriminator": [74, 34, 65, 133, 96, 163, 80, 69]
     }
-  ],
-  "errors": [
-    { "code": 6000, "name": "StreamInactive", "msg": "Stream is inactive" },
-    { "code": 6001, "name": "InsufficientFunds", "msg": "Insufficient funds in stream allocation" }
   ],
   "types": [
     {
@@ -169,7 +152,7 @@ export class PayStreamClient {
       this.providerPubkey = provider;
 
       const [sessionPda] = PublicKey.findProgramAddressSync(
-          [Buffer.from("session_v2"), payer.toBuffer(), provider.toBuffer()],
+          [Buffer.from("session_v1"), payer.toBuffer(), provider.toBuffer()],
           PAYSTREAM_PROGRAM_ID
       );
       this.sessionPda = sessionPda;
@@ -183,7 +166,7 @@ export class PayStreamClient {
       
       console.log("Initializing session...", { sessionPda: sessionPda.toString(), vaultPda: vaultPda.toString() });
 
-      return this.program.methods.initializeSession(new BN(rate), new BN(amount))
+      return this.program.methods.initialize_stream(new BN(rate), new BN(amount))
           .accounts({
               session: sessionPda,
               vault: vaultPda,
@@ -200,7 +183,7 @@ export class PayStreamClient {
 
   async isSessionInitialized(payer: PublicKey, provider: PublicKey): Promise<boolean> {
       const [sessionPda] = PublicKey.findProgramAddressSync(
-          [Buffer.from("session_v2"), payer.toBuffer(), provider.toBuffer()],
+          [Buffer.from("session_v1"), payer.toBuffer(), provider.toBuffer()],
           PAYSTREAM_PROGRAM_ID
       );
       try {
@@ -214,28 +197,28 @@ export class PayStreamClient {
   async delegateSession() {
       if (!this.sessionPda || !this.payerPubkey || !this.providerPubkey) throw new Error("Session not initialized");
 
-      const buffer_pda = delegateBufferPdaFromDelegatedAccountAndOwnerProgram(
+      const bufferPda = delegateBufferPdaFromDelegatedAccountAndOwnerProgram(
         this.sessionPda,
         PAYSTREAM_PROGRAM_ID
       );
-      const delegation_record_pda = delegationRecordPdaFromDelegatedAccount(
+      const delegationRecordPda = delegationRecordPdaFromDelegatedAccount(
         this.sessionPda
       );
-      const delegation_metadata_pda = delegationMetadataPdaFromDelegatedAccount(
+      const delegationMetadataPda = delegationMetadataPdaFromDelegatedAccount(
         this.sessionPda
       );
 
       return this.program.methods.delegate()
         .accounts({
             payer: this.payerPubkey,
-            bufferPda: buffer_pda,
-            delegationRecordPda: delegation_record_pda,
-            delegationMetadataPda: delegation_metadata_pda,
             pda: this.sessionPda,
             provider: this.providerPubkey,
-            systemProgram: SystemProgram.programId,
             ownerProgram: PAYSTREAM_PROGRAM_ID,
+            buffer: bufferPda,
+            delegationRecord: delegationRecordPda,
+            delegationMetadata: delegationMetadataPda,
             delegationProgram: DELEGATION_PROGRAM_ID,
+            systemProgram: SystemProgram.programId
         } as any)
         .instruction();
   }
@@ -243,10 +226,7 @@ export class PayStreamClient {
   async recordUsage(tokenCount: number) {
       if (!this.sessionPda) throw new Error("Session not initialized");
       
-      // record_usage in new IDL takes NO arguments in the method call but uses state? 
-      // Wait, I updated the program to take token_count. 
-      // I'll check my record_usage instruction in IDL again.
-      return this.program.methods.recordUsage(new BN(tokenCount))
+      return this.program.methods.tick(new BN(tokenCount))
           .accounts({
               session: this.sessionPda,
           } as any)
@@ -255,7 +235,7 @@ export class PayStreamClient {
 
   async closeSession(payer: PublicKey, provider: PublicKey) {
       const [sessionPda] = PublicKey.findProgramAddressSync(
-          [Buffer.from("session_v2"), payer.toBuffer(), provider.toBuffer()],
+          [Buffer.from("session_v1"), payer.toBuffer(), provider.toBuffer()],
           PAYSTREAM_PROGRAM_ID
       );
       const [vaultPda] = PublicKey.findProgramAddressSync(
@@ -266,7 +246,7 @@ export class PayStreamClient {
     const providerToken = getAssociatedTokenAddressSync(USDC_DEVNET, provider);
     const payerToken = getAssociatedTokenAddressSync(USDC_DEVNET, payer);
 
-      return this.program.methods.closeSession()
+      return this.program.methods.close_stream()
           .accounts({
               session: sessionPda,
               vault: vaultPda,

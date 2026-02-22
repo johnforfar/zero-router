@@ -51,7 +51,7 @@ pub mod zerorouter {
         let session = &ctx.accounts.session;
         
         let seeds = &[
-            b"session_v2",
+            b"session_v1",
             session.payer.as_ref(),
             session.provider.as_ref(),
             &[session.bump],
@@ -93,7 +93,7 @@ pub mod zerorouter {
         let provider_key = ctx.accounts.provider.key();
 
         let seeds: &[&[u8]] = &[
-            b"session_v2",
+            b"session_v1",
             payer_key.as_ref(),
             provider_key.as_ref(),
         ];
@@ -114,7 +114,7 @@ pub struct InitializeStream<'info> {
         init_if_needed,
         payer = payer,
         space = 8 + 32 + 32 + 8 + 1 + 1 + 8 + 8,
-        seeds = [b"session_v2", payer.key().as_ref(), provider.key().as_ref()],
+        seeds = [b"session_v1", payer.key().as_ref(), provider.key().as_ref()],
         bump
     )]
     pub session: Account<'info, SessionAccount>,
@@ -147,7 +147,7 @@ pub struct InitializeStream<'info> {
 pub struct Tick<'info> {
     #[account(
         mut,
-        seeds = [b"session_v2", session.payer.as_ref(), session.provider.as_ref()],
+        seeds = [b"session_v1", session.payer.as_ref(), session.provider.as_ref()],
         bump = session.bump
     )]
     pub session: Account<'info, SessionAccount>,
@@ -158,7 +158,7 @@ pub struct CloseStream<'info> {
     #[account(
         mut,
         close = payer,
-        seeds = [b"session_v2", session.payer.as_ref(), session.provider.as_ref()],
+        seeds = [b"session_v1", session.payer.as_ref(), session.provider.as_ref()],
         bump = session.bump
     )]
     pub session: Account<'info, SessionAccount>,
@@ -188,16 +188,15 @@ pub struct DelegateInput<'info> {
     pub payer: Signer<'info>,
     /// CHECK: Provider used for seed verification
     pub provider: UncheckedAccount<'info>,
-    /// CHECK: The account to be delegated (bypass Anchor deserialization check)
+    /// CHECK: The account to be delegated
     #[account(
         mut,
-        seeds = [b"session_v2", payer.key().as_ref(), provider.key().as_ref()],
+        seeds = [b"session_v1", payer.key().as_ref(), provider.key().as_ref()],
         bump,
         del
     )]
     pub pda: AccountInfo<'info>,
-    /// CHECK: System program
-    pub system_program: AccountInfo<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[account]
