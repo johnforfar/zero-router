@@ -300,14 +300,33 @@ export function ZeroClawTerminal() {
             tx.add(delegateIx);
         }
         
-        if (tx.instructions.length > 0) {
+        if (!isInitialized) {
+            addLedgerEntry("info", "🆕 [L1] INITIALIZING NEW SESSION...");
+            const initIx = await payStreamClient.initializeSession(userPubkey, providerPubkey, 1000000, 100);
+            const tx = new Transaction().add(initIx);
             const { blockhash } = await connection.getLatestBlockhash();
             tx.recentBlockhash = blockhash;
             tx.feePayer = payStreamClient.provider.wallet.publicKey;
             
             const signed = await payStreamClient.provider.wallet.signTransaction(tx);
             const sig = await connection.sendRawTransaction(signed.serialize());
-            addLedgerEntry("tx", `✅ [L1] SETUP COMPLETE. SIG: ${sig}`, sig);
+            addLedgerEntry("tx", `✅ [L1] SESSION INITIALIZED. SIG: ${sig}`, sig);
+            // Wait for confirmation to ensure L1 state is updated before delegation
+            await connection.confirmTransaction(sig, "confirmed");
+        }
+
+        if (!isDelegated) {
+            addLedgerEntry("info", `🔗 [L1] DELEGATING TO EPHEMERAL ROLLUP...`);
+            const delegateIx = await payStreamClient.delegateSession();
+            const tx = new Transaction().add(delegateIx);
+            const { blockhash } = await connection.getLatestBlockhash();
+            tx.recentBlockhash = blockhash;
+            tx.feePayer = payStreamClient.provider.wallet.publicKey;
+            
+            const signed = await payStreamClient.provider.wallet.signTransaction(tx);
+            const sig = await connection.sendRawTransaction(signed.serialize());
+            addLedgerEntry("tx", `✅ [L1] STATE DELEGATED. SIG: ${sig}`, sig);
+            await connection.confirmTransaction(sig, "confirmed");
         }
 
         setSessionActive(true);
@@ -552,7 +571,7 @@ export function ZeroClawTerminal() {
                          onClick={() => setActiveTab("zeroclaw")}
                          className={`flex-1 p-3 text-center font-medium transition-all ${activeTab === "zeroclaw" ? theme.tabActive : theme.tabInactive} relative group`}
                     >
-                        ZEROCLAW_SYS_CMD
+                        ZEROCLAW_AGENT
                         <span className="absolute -top-1 -right-1 flex h-2 w-2">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
@@ -569,9 +588,13 @@ export function ZeroClawTerminal() {
                             </div>
                         ))
                     ) : (
-                         zeroclawLogs.map((log, i) => (
-                            <div key={i} className="whitespace-pre-wrap break-words font-mono text-xs">{log}</div>
-                        ))
+                         <div className="flex flex-col items-center justify-center h-full space-y-4 opacity-50">
+                            <Cpu size={48} className="text-blue-500 animate-pulse" />
+                            <div className="text-xl font-bold tracking-widest text-blue-400">COMING SOON</div>
+                            <div className="text-xs text-blue-300/60 max-w-xs text-center leading-relaxed italic">
+                                Soveign AI agent execution and system command orchestration is currently under development.
+                            </div>
+                        </div>
                     )}
                 </div>
 

@@ -27,14 +27,14 @@ const IDL: any = {
       "name": "initialize_session",
       "discriminator": [69, 130, 92, 236, 107, 231, 159, 129],
       "accounts": [
-        { "name": "session", "writable": true, "signer": false },
-        { "name": "vault", "writable": true, "signer": false },
+        { "name": "session", "writable": true },
+        { "name": "vault", "writable": true },
         { "name": "payer", "writable": true, "signer": true },
-        { "name": "provider", "writable": false, "signer": false },
-        { "name": "payer_token", "writable": true, "signer": false },
-        { "name": "mint", "writable": false, "signer": false },
-        { "name": "token_program", "writable": false, "signer": false },
-        { "name": "system_program", "writable": false, "signer": false }
+        { "name": "provider", "writable": false },
+        { "name": "payer_token", "writable": true },
+        { "name": "mint", "writable": false },
+        { "name": "token_program", "writable": false },
+        { "name": "system_program", "writable": false }
       ],
       "args": [
         { "name": "rate", "type": "u64" },
@@ -45,7 +45,7 @@ const IDL: any = {
       "name": "record_usage",
       "discriminator": [185, 5, 42, 72, 185, 187, 202, 147],
       "accounts": [
-        { "name": "session", "writable": true, "signer": false }
+        { "name": "session", "writable": true }
       ],
       "args": [
         { "name": "token_count", "type": "u64" }
@@ -55,12 +55,12 @@ const IDL: any = {
       "name": "close_session",
       "discriminator": [68, 114, 178, 140, 222, 38, 248, 211],
       "accounts": [
-        { "name": "session", "writable": true, "signer": false },
-        { "name": "vault", "writable": true, "signer": false },
+        { "name": "session", "writable": true },
+        { "name": "vault", "writable": true },
         { "name": "payer", "writable": true, "signer": true },
-        { "name": "provider_token", "writable": true, "signer": false },
-        { "name": "payer_token", "writable": true, "signer": false },
-        { "name": "token_program", "writable": false, "signer": false }
+        { "name": "provider_token", "writable": true },
+        { "name": "payer_token", "writable": true },
+        { "name": "token_program", "writable": false }
       ],
       "args": []
     },
@@ -69,14 +69,14 @@ const IDL: any = {
         "discriminator": [90, 147, 75, 178, 85, 88, 4, 137],
         "accounts": [
             { "name": "payer", "writable": true, "signer": true },
-            { "name": "provider", "writable": false, "signer": false },
-            { "name": "pda", "writable": true, "signer": false },
-            { "name": "owner_program", "writable": false, "signer": false },
-            { "name": "buffer", "writable": true, "signer": false },
-            { "name": "delegation_record", "writable": true, "signer": false },
-            { "name": "delegation_metadata", "writable": true, "signer": false },
-            { "name": "delegation_program", "writable": false, "signer": false },
-            { "name": "system_program", "writable": false, "signer": false }
+            { "name": "pda", "writable": true },
+            { "name": "provider", "writable": false },
+            { "name": "owner_program", "writable": false },
+            { "name": "buffer", "writable": true },
+            { "name": "delegation_record", "writable": true },
+            { "name": "delegation_metadata", "writable": true },
+            { "name": "delegation_program", "writable": false },
+            { "name": "system_program", "writable": false }
         ],
         "args": []
     }
@@ -173,7 +173,7 @@ export class PayStreamClient {
       
       console.log("Initializing session...", { sessionPda: sessionPda.toString(), vaultPda: vaultPda.toString() });
 
-      return this.program.methods.initializeSession(new BN(rate), new BN(amount))
+      return this.program.methods.initialize_session(new BN(rate), new BN(amount))
           .accounts({
               session: sessionPda,
               vault: vaultPda,
@@ -183,7 +183,7 @@ export class PayStreamClient {
               mint: USDC_DEVNET,
               tokenProgram: TOKEN_PROGRAM_ID,
               systemProgram: SystemProgram.programId,
-          })
+          } as any)
           .instruction();
   }
 
@@ -203,39 +203,39 @@ export class PayStreamClient {
   async delegateSession() {
       if (!this.sessionPda || !this.payerPubkey || !this.providerPubkey) throw new Error("Session not initialized");
 
-      const bufferPda = delegateBufferPdaFromDelegatedAccountAndOwnerProgram(
+      const buffer_pda = delegateBufferPdaFromDelegatedAccountAndOwnerProgram(
         this.sessionPda,
         PAYSTREAM_PROGRAM_ID
       );
-      const delegationRecord = delegationRecordPdaFromDelegatedAccount(
+      const delegation_record_pda = delegationRecordPdaFromDelegatedAccount(
         this.sessionPda
       );
-      const delegationMetadata = delegationMetadataPdaFromDelegatedAccount(
+      const delegation_metadata_pda = delegationMetadataPdaFromDelegatedAccount(
         this.sessionPda
       );
 
       return this.program.methods.delegate()
         .accounts({
             payer: this.payerPubkey,
-            provider: this.providerPubkey,
             pda: this.sessionPda,
+            provider: this.providerPubkey,
             ownerProgram: PAYSTREAM_PROGRAM_ID,
-            buffer: bufferPda,
-            delegationRecord: delegationRecord,
-            delegationMetadata: delegationMetadata,
+            buffer: buffer_pda,
+            delegationRecord: delegation_record_pda,
+            delegationMetadata: delegation_metadata_pda,
             delegationProgram: DELEGATION_PROGRAM_ID,
             systemProgram: SystemProgram.programId
-        })
+        } as any)
         .instruction();
   }
 
   async recordUsage(tokenCount: number) {
       if (!this.sessionPda) throw new Error("Session not initialized");
       
-      return this.program.methods.recordUsage(new BN(tokenCount))
+      return this.program.methods.record_usage(new BN(tokenCount))
           .accounts({
               session: this.sessionPda,
-          })
+          } as any)
           .instruction();
   }
 
@@ -252,7 +252,7 @@ export class PayStreamClient {
     const providerToken = getAssociatedTokenAddressSync(USDC_DEVNET, provider);
     const payerToken = getAssociatedTokenAddressSync(USDC_DEVNET, payer);
 
-      return this.program.methods.closeSession()
+      return this.program.methods.close_session()
           .accounts({
               session: sessionPda,
               vault: vaultPda,
@@ -260,7 +260,7 @@ export class PayStreamClient {
               providerToken: providerToken,
               payerToken: payerToken,
               tokenProgram: TOKEN_PROGRAM_ID,
-          })
+          } as any)
           .instruction();
   }
 }
