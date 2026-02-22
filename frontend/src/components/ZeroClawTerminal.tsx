@@ -181,31 +181,15 @@ export function ZeroClawTerminal() {
 
   const addLedgerEntry = (type: LedgerEntry["type"], content: string, sig?: string, isStreaming = false) => {
     setLedgerEntries(prev => {
-        if (type === "settlement" && prev.length > 0) {
-            const last = prev[prev.length - 1];
-            if (last.type === "settlement" && last.isStreaming) {
-                const updated = [...prev];
-                const newSubEntry = { sig, content };
-                updated[updated.length - 1] = {
-                    ...last,
-                    count: (last.count || 1) + 1,
-                    content: `⚡ [STREAM] batch_settle(${(last.count || 1) + 1})`,
-                    subEntries: [...(last.subEntries || []), newSubEntry],
-                    isStreaming: isStreaming,
-                    isExpanded: true, // Always expand settlement batches
-                    sig: undefined // Don't show a top-level signature for a batch
-                };
-                return updated;
-            }
-        }
+        // We now keep settlements flat (no merging) to match the reference style and ensure links are visible
         return [...prev, {
             id: Math.random().toString(36),
             type,
             content,
-            sig: type === "tx" ? sig : undefined, // Top-level sig only for "tx" type
+            sig,
             isStreaming,
-            isExpanded: type === "settlement" ? true : undefined,
-            subEntries: (type === "settlement" && sig) ? [{ sig, content }] : (sig ? [{ sig, content }] : [])
+            isExpanded: false,
+            subEntries: []
         }];
     });
   };
@@ -451,7 +435,7 @@ export function ZeroClawTerminal() {
                       // Use the ER receipt from the server instead of local transaction
                       const tickSig = data.er_receipt;
                       if (tickSig) {
-                          addLedgerEntry("settlement", `⚡ [ER] PER-TOKEN TICK | cost: ${COST_PER_TOKEN_USDC.toFixed(6)} USDC`, tickSig, true);
+                          addLedgerEntry("settlement", `⚡ [ER] PER-TOKEN | cost: ${COST_PER_TOKEN_USDC.toFixed(6)} USDC`, tickSig, false);
                       }
                       
                       const t1 = performance.now();
@@ -665,12 +649,15 @@ export function ZeroClawTerminal() {
                                         {entry.content}
                                         {entry.sig && (
                                             <a
-                                                href={`https://solscan.io/tx/${entry.sig}?cluster=devnet`}
+                                                href={entry.type === "settlement"
+                                                    ? `https://explorer.solana.com/tx/${entry.sig}?cluster=custom&customUrl=https%3A%2F%2Fdevnet-as.magicblock.app`
+                                                    : `https://solscan.io/tx/${entry.sig}?cluster=devnet`
+                                                }
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="ml-2 text-blue-500 underline hover:text-blue-400 text-[10px] font-bold"
+                                                className={`ml-2 underline text-[10px] font-bold ${entry.type === "settlement" ? "text-yellow-500 hover:text-yellow-400" : "text-blue-500 hover:text-blue-400"}`}
                                             >
-                                                [VIEW_L1]
+                                                {entry.type === "settlement" ? "[ER_TX]" : "[VIEW_L1]"}
                                             </a>
                                         )}
                                     </div>

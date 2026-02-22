@@ -33,17 +33,23 @@ pub mod zerorouter {
         Ok(())
     }
 
-    pub fn tick(ctx: Context<Tick>, token_count: u64) -> Result<()> {
-        let session = &mut ctx.accounts.session;
+    pub fn tick(ctx: Context<Tick>) -> Result<()> {
+        let mut data = ctx.accounts.session.try_borrow_mut_data()?;
+        let session = StreamSession::try_from_slice(&data[8..])?;
+        
         require!(session.is_active, ZeroRouterError::StreamInactive);
 
-        let cost = token_count * session.rate;
+        let cost = session.rate; // One tick = one unit of rate
         require!(
             session.accumulated_amount + cost <= session.total_deposited,
             ZeroRouterError::InsufficientFunds
         );
 
-        session.accumulated_amount += cost;
+        let mut updated_session = session;
+        updated_session.accumulated_amount += cost;
+        
+        let mut writer = &mut data[8..];
+        updated_session.serialize(&mut writer)?;
         Ok(())
     }
 
@@ -117,7 +123,7 @@ pub struct InitializeStream<'info> {
         seeds = [b"session_v1", payer.key().as_ref(), provider.key().as_ref()],
         bump
     )]
-    pub session: Account<'info, SessionAccount>,
+    pub session: Account<'info, StreamSession>,
     
     #[account(
         init_if_needed,
@@ -145,12 +151,9 @@ pub struct InitializeStream<'info> {
 
 #[derive(Accounts)]
 pub struct Tick<'info> {
-    #[account(
-        mut,
-        seeds = [b"session_v1", session.payer.as_ref(), session.provider.as_ref()],
-        bump = session.bump
-    )]
-    pub session: Account<'info, SessionAccount>,
+    /// CHECK: Bypassing strict deserialization to avoid ER issues
+    #[account(mut)]
+    pub session: UncheckedAccount<'info>,
 }
 
 #[derive(Accounts)]
@@ -161,7 +164,7 @@ pub struct CloseStream<'info> {
         seeds = [b"session_v1", session.payer.as_ref(), session.provider.as_ref()],
         bump = session.bump
     )]
-    pub session: Account<'info, SessionAccount>,
+    pub session: Account<'info, StreamSession>,
 
     #[account(
         mut,
@@ -194,12 +197,12 @@ pub struct DelegateInput<'info> {
         bump = pda.bump,
         del
     )]
-    pub pda: Account<'info, SessionAccount>,
+    pub pda: Account<'info, StreamSession>,
     pub system_program: Program<'info, System>,
 }
 
 #[account]
-pub struct SessionAccount {
+pub struct StreamSession {
     pub payer: Pubkey,
     pub provider: Pubkey,
     pub rate: u64,

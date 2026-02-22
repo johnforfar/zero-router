@@ -88,11 +88,11 @@ const IDL: any = {
     }
   ],
   "accounts": [
-    { "name": "SessionAccount", "discriminator": [74, 34, 65, 133, 96, 163, 80, 69] }
+    { "name": "StreamSession", "discriminator": [161, 40, 133, 194, 180, 179, 82, 190] }
   ],
   "types": [
     {
-      "name": "SessionAccount",
+      "name": "StreamSession",
       "type": {
         "kind": "struct",
         "fields": [
