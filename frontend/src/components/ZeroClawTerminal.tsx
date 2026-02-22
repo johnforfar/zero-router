@@ -325,34 +325,16 @@ export function ZeroClawTerminal() {
   const closeERSession = async () => {
     if (closingRef.current || !payStreamClient) return;
     closingRef.current = true;
-    addLedgerEntry("info", "🔒 [ER] SESSION TIMEOUT (15s IDLE). SETTLING...");
     
-    try {
-        const userPubkey = payStreamClient.provider.wallet.publicKey;
-        const hostPubkey = new PublicKey(providerWallet);
-        const closeIx = await payStreamClient.closeSession(userPubkey, hostPubkey);
-        
-        const tx = new Transaction().add(closeIx);
-        const { blockhash } = await connection.getLatestBlockhash();
-        tx.recentBlockhash = blockhash;
-        tx.feePayer = userPubkey;
-        
-        const signed = await payStreamClient.provider.wallet.signTransaction(tx);
-        const sig = await connection.sendRawTransaction(signed.serialize());
-
-        if (sig) {
-            addLedgerEntry("tx", `📦 [L1] FINAL STATE COMMITTED`, sig);
-            addLedgerEntry("info", `💰 [L1] REFUNDED REMAINING COLLATERAL.`);
-        }
-    } catch (e) {
-         console.error("Close failed", e);
-         addLedgerEntry("info", `❌ SETTLEMENT FAILED: ${e}`);
-    }
+    // Exactly like USDC-Paystream: we just clear local state and standby.
+    // The session remains valid and delegated on-chain for rapid reuse.
+    addLedgerEntry("info", "🔒 [ER] SESSION STANDBY (15s IDLE).");
     
     await fetchBalances();
     setSessionActive(false);
     setIdleSeconds(0);
     setLatencyHistory([]);
+    closingRef.current = false;
   };
 
   const handleCommand = async (e: React.FormEvent) => {

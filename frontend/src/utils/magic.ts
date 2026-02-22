@@ -85,6 +85,19 @@ const IDL: any = {
             { "name": "delegationProgram", "address": DELEGATION_PROGRAM_ID.toBase58() }
         ],
         "args": []
+    },
+    {
+      "name": "processUndelegation",
+      "discriminator": [196, 28, 41, 206, 48, 37, 51, 167],
+      "accounts": [
+        { "name": "baseAccount", "writable": true },
+        { "name": "buffer", "writable": true },
+        { "name": "payer", "writable": true, "signer": true },
+        { "name": "systemProgram", "address": "11111111111111111111111111111111" }
+      ],
+      "args": [
+        { "name": "seeds", "type": { "vec": "bytes" } }
+      ]
     }
   ],
   "accounts": [
@@ -203,6 +216,29 @@ export class PayStreamClient {
         .instruction();
       ix.programId = PAYSTREAM_PROGRAM_ID;
       return ix;
+  }
+
+  async undelegateSession() {
+    if (!this.sessionPda || !this.payerPubkey || !this.hostPubkey) throw new Error("Session not initialized");
+    const buffer = delegateBufferPdaFromDelegatedAccountAndOwnerProgram(this.sessionPda, PAYSTREAM_PROGRAM_ID);
+    
+    // Exact seeds used for derivation: [b"session_final_v1", payer, host]
+    const seeds = [
+        Buffer.from("session_final_v1"),
+        this.payerPubkey.toBuffer(),
+        this.hostPubkey.toBuffer()
+    ];
+
+    const ix = await this.program.methods.processUndelegation(seeds)
+      .accounts({
+          baseAccount: this.sessionPda,
+          buffer: buffer,
+          payer: this.payerPubkey,
+          systemProgram: SystemProgram.programId,
+      } as any)
+      .instruction();
+    ix.programId = PAYSTREAM_PROGRAM_ID;
+    return ix;
   }
 
   async recordUsage(tokenCount: number) {
