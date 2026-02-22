@@ -37,7 +37,7 @@ const IDL: any = {
         { "name": "session", "writable": true },
         { "name": "vault", "writable": true },
         { "name": "payer", "writable": true, "signer": true },
-        { "name": "provider" },
+        { "name": "host" },
         { "name": "mint" },
         { "name": "payerToken", "writable": true },
         { "name": "systemProgram", "address": "11111111111111111111111111111111" },
@@ -63,7 +63,7 @@ const IDL: any = {
       "accounts": [
         { "name": "session", "writable": true },
         { "name": "vault", "writable": true },
-        { "name": "providerToken", "writable": true },
+        { "name": "hostToken", "writable": true },
         { "name": "payer", "writable": true, "signer": true },
         { "name": "payerToken", "writable": true },
         { "name": "tokenProgram", "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA" }
@@ -75,11 +75,11 @@ const IDL: any = {
         "discriminator": [90, 147, 75, 178, 85, 88, 4, 137],
         "accounts": [
             { "name": "payer", "writable": true, "signer": true },
-            { "name": "provider", "writable": false },
-            { "name": "buffer", "writable": true },
+            { "name": "host", "writable": false },
+            { "name": "bufferPda", "writable": true },
             { "name": "pda", "writable": true },
-            { "name": "delegationRecord", "writable": true },
-            { "name": "delegationMetadata", "writable": true },
+            { "name": "delegationRecordPda", "writable": true },
+            { "name": "delegationMetadataPda", "writable": true },
             { "name": "delegationProgram", "address": DELEGATION_PROGRAM_ID.toBase58() },
             { "name": "systemProgram", "address": "11111111111111111111111111111111" },
             { "name": "ownerProgram", "address": PAYSTREAM_PROGRAM_ID.toBase58() }
@@ -88,7 +88,7 @@ const IDL: any = {
     }
   ],
   "accounts": [
-    { "name": "StreamSession", "discriminator": [161, 40, 133, 194, 180, 179, 82, 190] }
+    { "name": "StreamSession", "discriminator": [92, 115, 173, 69, 208, 69, 79, 19] }
   ],
   "types": [
     {
@@ -97,7 +97,7 @@ const IDL: any = {
         "kind": "struct",
         "fields": [
           { "name": "payer", "type": "pubkey" },
-          { "name": "provider", "type": "pubkey" },
+          { "name": "host", "type": "pubkey" },
           { "name": "rate", "type": "u64" },
           { "name": "isActive", "type": "bool" },
           { "name": "bump", "type": "u8" },
@@ -140,7 +140,7 @@ export class PayStreamClient {
   provider: AnchorProvider;
   program: Program;
   payerPubkey: PublicKey | null = null;
-  providerPubkey: PublicKey | null = null;
+  hostPubkey: PublicKey | null = null;
   sessionPda: PublicKey | null = null;
 
   constructor(connection: Connection, wallet: Wallet) {
@@ -149,10 +149,10 @@ export class PayStreamClient {
     this.program = new Program(IDL, this.provider);
   }
 
-  async initializeSession(payer: PublicKey, provider: PublicKey, amount: number, rate: number) {
+  async initializeSession(payer: PublicKey, host: PublicKey, amount: number, rate: number) {
       this.payerPubkey = payer;
-      this.providerPubkey = provider;
-      const [sessionPda] = PublicKey.findProgramAddressSync([Buffer.from("session_v1"), payer.toBuffer(), provider.toBuffer()], PAYSTREAM_PROGRAM_ID);
+      this.hostPubkey = host;
+      const [sessionPda] = PublicKey.findProgramAddressSync([Buffer.from("session_final_v1"), payer.toBuffer(), host.toBuffer()], PAYSTREAM_PROGRAM_ID);
       this.sessionPda = sessionPda;
       const [vaultPda] = PublicKey.findProgramAddressSync([Buffer.from("vault"), sessionPda.toBuffer()], PAYSTREAM_PROGRAM_ID);
       const payerToken = getAssociatedTokenAddressSync(USDC_DEVNET, payer);
@@ -162,7 +162,7 @@ export class PayStreamClient {
               session: sessionPda,
               vault: vaultPda,
               payer: payer,
-              provider: provider,
+              host: host,
               mint: USDC_DEVNET,
               payerToken: payerToken,
               systemProgram: SystemProgram.programId,
@@ -174,8 +174,8 @@ export class PayStreamClient {
       return ix;
   }
 
-  async isSessionInitialized(payer: PublicKey, provider: PublicKey): Promise<boolean> {
-      const [sessionPda] = PublicKey.findProgramAddressSync([Buffer.from("session_v1"), payer.toBuffer(), provider.toBuffer()], PAYSTREAM_PROGRAM_ID);
+  async isSessionInitialized(payer: PublicKey, host: PublicKey): Promise<boolean> {
+      const [sessionPda] = PublicKey.findProgramAddressSync([Buffer.from("session_final_v1"), payer.toBuffer(), host.toBuffer()], PAYSTREAM_PROGRAM_ID);
       try {
           const info = await this.connection.getAccountInfo(sessionPda);
           return info !== null;
@@ -183,7 +183,7 @@ export class PayStreamClient {
   }
 
   async delegateSession() {
-      if (!this.sessionPda || !this.payerPubkey || !this.providerPubkey) throw new Error("Session not initialized");
+      if (!this.sessionPda || !this.payerPubkey || !this.hostPubkey) throw new Error("Session not initialized");
       const buffer = delegateBufferPdaFromDelegatedAccountAndOwnerProgram(this.sessionPda, PAYSTREAM_PROGRAM_ID);
       const delegationRecord = delegationRecordPdaFromDelegatedAccount(this.sessionPda);
       const delegationMetadata = delegationMetadataPdaFromDelegatedAccount(this.sessionPda);
@@ -191,11 +191,11 @@ export class PayStreamClient {
       const ix = await this.program.methods.delegate()
         .accounts({
             payer: this.payerPubkey,
-            provider: this.providerPubkey,
-            buffer: buffer,
+            host: this.hostPubkey,
+            bufferPda: buffer,
             pda: this.sessionPda,
-            delegationRecord: delegationRecord,
-            delegationMetadata: delegationMetadata,
+            delegationRecordPda: delegationRecord,
+            delegationMetadataPda: delegationMetadata,
             delegationProgram: DELEGATION_PROGRAM_ID,
             systemProgram: SystemProgram.programId,
             ownerProgram: PAYSTREAM_PROGRAM_ID,
@@ -219,20 +219,22 @@ export class PayStreamClient {
       return ixs;
   }
 
-  async closeSession(payer: PublicKey, provider: PublicKey) {
-      const [sessionPda] = PublicKey.findProgramAddressSync([Buffer.from("session_v1"), payer.toBuffer(), provider.toBuffer()], PAYSTREAM_PROGRAM_ID);
+  async closeSession(payer: PublicKey, host: PublicKey) {
+      const [sessionPda] = PublicKey.findProgramAddressSync([Buffer.from("session_final_v1"), payer.toBuffer(), host.toBuffer()], PAYSTREAM_PROGRAM_ID);
       const [vaultPda] = PublicKey.findProgramAddressSync([Buffer.from("vault"), sessionPda.toBuffer()], PAYSTREAM_PROGRAM_ID);
-      const providerToken = getAssociatedTokenAddressSync(USDC_DEVNET, provider);
+      const hostToken = getAssociatedTokenAddressSync(USDC_DEVNET, host);
       const payerToken = getAssociatedTokenAddressSync(USDC_DEVNET, payer);
-      return this.program.methods.closeStream()
+      const ix = await this.program.methods.closeStream()
           .accounts({
               session: sessionPda,
               vault: vaultPda,
-              providerToken: providerToken,
+              host_token: hostToken,
               payer: payer,
-              payerToken: payerToken,
-              tokenProgram: TOKEN_PROGRAM_ID,
+              payer_token: payerToken,
+              token_program: TOKEN_PROGRAM_ID,
           } as any)
           .instruction();
+      ix.programId = PAYSTREAM_PROGRAM_ID;
+      return ix;
   }
 }

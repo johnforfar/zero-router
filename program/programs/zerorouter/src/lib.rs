@@ -13,7 +13,7 @@ pub mod zerorouter {
     pub fn initialize_stream(ctx: Context<InitializeStream>, rate: u64, amount: u64) -> Result<()> {
         let session = &mut ctx.accounts.session;
         session.payer = ctx.accounts.payer.key();
-        session.provider = ctx.accounts.provider.key();
+        session.host = ctx.accounts.host.key();
         session.rate = rate;
         session.is_active = true;
         session.bump = ctx.bumps.session;
@@ -34,22 +34,15 @@ pub mod zerorouter {
     }
 
     pub fn tick(ctx: Context<Tick>) -> Result<()> {
-        let mut data = ctx.accounts.session.try_borrow_mut_data()?;
-        let session = StreamSession::try_from_slice(&data[8..])?;
-        
+        let session = &mut ctx.accounts.session;
         require!(session.is_active, ZeroRouterError::StreamInactive);
 
-        let cost = session.rate; // One tick = one unit of rate
         require!(
-            session.accumulated_amount + cost <= session.total_deposited,
+            session.accumulated_amount + session.rate <= session.total_deposited,
             ZeroRouterError::InsufficientFunds
         );
 
-        let mut updated_session = session;
-        updated_session.accumulated_amount += cost;
-        
-        let mut writer = &mut data[8..];
-        updated_session.serialize(&mut writer)?;
+        session.accumulated_amount += session.rate;
         Ok(())
     }
 
@@ -57,9 +50,9 @@ pub mod zerorouter {
         let session = &ctx.accounts.session;
         
         let seeds = &[
-            b"session_v1",
+            b"session_final_v1",
             session.payer.as_ref(),
-            session.provider.as_ref(),
+            session.host.as_ref(),
             &[session.bump],
         ];
         let signer = &[&seeds[..]];
@@ -69,7 +62,7 @@ pub mod zerorouter {
                 ctx.accounts.token_program.to_account_info(),
                 Transfer {
                     from: ctx.accounts.vault.to_account_info(),
-                    to: ctx.accounts.provider_token.to_account_info(),
+                    to: ctx.accounts.host_token.to_account_info(),
                     authority: session.to_account_info(),
                 },
                 signer,
@@ -96,12 +89,12 @@ pub mod zerorouter {
 
     pub fn delegate(ctx: Context<DelegateInput>) -> Result<()> {
         let payer_key = ctx.accounts.payer.key();
-        let provider_key = ctx.accounts.provider.key();
+        let host_key = ctx.accounts.host.key();
 
         let seeds: &[&[u8]] = &[
-            b"session_v1",
+            b"session_final_v1",
             payer_key.as_ref(),
-            provider_key.as_ref(),
+            host_key.as_ref(),
         ];
 
         ctx.accounts.delegate_pda(
@@ -117,16 +110,16 @@ pub mod zerorouter {
 #[derive(Accounts)]
 pub struct InitializeStream<'info> {
     #[account(
-        init_if_needed,
+        init,
         payer = payer,
         space = 8 + 32 + 32 + 8 + 1 + 1 + 8 + 8,
-        seeds = [b"session_v1", payer.key().as_ref(), provider.key().as_ref()],
+        seeds = [b"session_final_v1", payer.key().as_ref(), host.key().as_ref()],
         bump
     )]
     pub session: Account<'info, StreamSession>,
     
     #[account(
-        init_if_needed,
+        init,
         payer = payer,
         token::mint = mint,
         token::authority = session,
@@ -137,8 +130,8 @@ pub struct InitializeStream<'info> {
 
     #[account(mut)]
     pub payer: Signer<'info>,
-    /// CHECK: Provider address
-    pub provider: UncheckedAccount<'info>,
+    /// CHECK: Host address
+    pub host: UncheckedAccount<'info>,
     
     pub mint: Account<'info, Mint>,
     #[account(mut)]
@@ -151,9 +144,12 @@ pub struct InitializeStream<'info> {
 
 #[derive(Accounts)]
 pub struct Tick<'info> {
-    /// CHECK: Bypassing strict deserialization to avoid ER issues
-    #[account(mut)]
-    pub session: UncheckedAccount<'info>,
+    #[account(
+        mut,
+        seeds = [b"session_final_v1", session.payer.as_ref(), session.host.as_ref()],
+        bump = session.bump
+    )]
+    pub session: Account<'info, StreamSession>,
 }
 
 #[derive(Accounts)]
@@ -161,7 +157,7 @@ pub struct CloseStream<'info> {
     #[account(
         mut,
         close = payer,
-        seeds = [b"session_v1", session.payer.as_ref(), session.provider.as_ref()],
+        seeds = [b"session_final_v1", session.payer.as_ref(), session.host.as_ref()],
         bump = session.bump
     )]
     pub session: Account<'info, StreamSession>,
@@ -175,7 +171,7 @@ pub struct CloseStream<'info> {
     pub vault: Account<'info, TokenAccount>,
 
     #[account(mut)]
-    pub provider_token: Account<'info, TokenAccount>,
+    pub host_token: Account<'info, TokenAccount>,
 
     #[account(mut)]
     pub payer: Signer<'info>,
@@ -189,22 +185,26 @@ pub struct CloseStream<'info> {
 #[derive(Accounts)]
 pub struct DelegateInput<'info> {
     pub payer: Signer<'info>,
-    /// CHECK: Provider used for seed verification
-    pub provider: UncheckedAccount<'info>,
+    
+    /// CHECK: Bypassing strict check for atomic setup
     #[account(
         mut,
-        seeds = [b"session_v1", payer.key().as_ref(), provider.key().as_ref()],
-        bump = pda.bump,
+        seeds = [b"session_final_v1", payer.key().as_ref(), host.key().as_ref()],
+        bump,
         del
     )]
-    pub pda: Account<'info, StreamSession>,
+    pub pda: UncheckedAccount<'info>,
+    
+    /// CHECK: Host address
+    pub host: UncheckedAccount<'info>,
+    
     pub system_program: Program<'info, System>,
 }
 
 #[account]
 pub struct StreamSession {
     pub payer: Pubkey,
-    pub provider: Pubkey,
+    pub host: Pubkey,
     pub rate: u64,
     pub is_active: bool,
     pub bump: u8,

@@ -122,12 +122,12 @@ export function useZeroClaw() {
     
     try {
         const userPubkey = new PublicKey(userAddr);
-        const providerPubkey = new PublicKey(providerWallet);
-        const isInitialized = await payStreamClient.isSessionInitialized(userPubkey, providerPubkey);
+        const hostPubkey = new PublicKey(providerWallet);
+        const isInitialized = await payStreamClient.isSessionInitialized(userPubkey, hostPubkey);
 
         if (!isInitialized) {
             addLedgerEntry("info", "🆕 [L1] INITIALIZING NEW SESSION...");
-            const initIx = await payStreamClient.initializeSession(userPubkey, providerPubkey, 1000000, 100);
+            const initIx = await payStreamClient.initializeSession(userPubkey, hostPubkey, 1000000, 100);
             const tx = new Transaction().add(initIx);
             const { blockhash } = await connection.getLatestBlockhash();
             tx.recentBlockhash = blockhash;
@@ -138,7 +138,7 @@ export function useZeroClaw() {
             await connection.confirmTransaction(sig, "confirmed");
         }
 
-        const [sessionPda] = PublicKey.findProgramAddressSync([Buffer.from("session_v1"), userPubkey.toBuffer(), providerPubkey.toBuffer()], PAYSTREAM_PROGRAM_ID);
+        const [sessionPda] = PublicKey.findProgramAddressSync([Buffer.from("session_final_v1"), userPubkey.toBuffer(), hostPubkey.toBuffer()], PAYSTREAM_PROGRAM_ID);
         const delegationRecordPda = delegationRecordPdaFromDelegatedAccount(sessionPda);
         const delegationInfo = await connection.getAccountInfo(delegationRecordPda);
 

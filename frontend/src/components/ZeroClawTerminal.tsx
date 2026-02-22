@@ -247,16 +247,16 @@ export function ZeroClawTerminal() {
     
     try {
         const userPubkey = new PublicKey(userAddr);
-        const providerPubkey = new PublicKey(providerWallet);
+        const hostPubkey = new PublicKey(providerWallet);
 
         // Derive Session PDA to check status
         const [sessionPda] = PublicKey.findProgramAddressSync(
-            [Buffer.from("session_v1"), userPubkey.toBuffer(), providerPubkey.toBuffer()],
+            [Buffer.from("session_final_v1"), userPubkey.toBuffer(), hostPubkey.toBuffer()],
             PAYSTREAM_PROGRAM_ID
         );
         payStreamClient.sessionPda = sessionPda;
         payStreamClient.payerPubkey = userPubkey;
-        payStreamClient.providerPubkey = providerPubkey;
+        payStreamClient.hostPubkey = hostPubkey;
 
         const sessionInfo = await connection.getAccountInfo(sessionPda);
         const isInitialized = sessionInfo !== null;
@@ -275,7 +275,7 @@ export function ZeroClawTerminal() {
 
         if (!isInitialized) {
             addLedgerEntry("info", "🆕 [L1] INITIALIZING NEW SESSION...");
-            const initIx = await payStreamClient.initializeSession(userPubkey, providerPubkey, 1000000, 100);
+            const initIx = await payStreamClient.initializeSession(userPubkey, hostPubkey, 1000000, 100);
             tx.add(initIx);
         }
 
@@ -287,7 +287,7 @@ export function ZeroClawTerminal() {
         
         if (!isInitialized) {
             addLedgerEntry("info", "🆕 [L1] INITIALIZING NEW SESSION...");
-            const initIx = await payStreamClient.initializeSession(userPubkey, providerPubkey, 1000000, 100);
+            const initIx = await payStreamClient.initializeSession(userPubkey, hostPubkey, 1000000, 100);
             const tx = new Transaction().add(initIx);
             const { blockhash } = await connection.getLatestBlockhash();
             tx.recentBlockhash = blockhash;
@@ -329,11 +329,10 @@ export function ZeroClawTerminal() {
     
     try {
         const userPubkey = payStreamClient.provider.wallet.publicKey;
-        const providerPubkey = new PublicKey(providerWallet);
-        const closeIx = await payStreamClient.closeSession(userPubkey, providerPubkey);
+        const hostPubkey = new PublicKey(providerWallet);
+        const closeIx = await payStreamClient.closeSession(userPubkey, hostPubkey);
         
         const tx = new Transaction().add(closeIx);
-        
         const { blockhash } = await connection.getLatestBlockhash();
         tx.recentBlockhash = blockhash;
         tx.feePayer = userPubkey;
@@ -342,11 +341,12 @@ export function ZeroClawTerminal() {
         const sig = await connection.sendRawTransaction(signed.serialize());
 
         if (sig) {
-            addLedgerEntry("tx", `📦 [L1] FINAL STATE COMMITTED. TX: ${sig}`, sig);
+            addLedgerEntry("tx", `📦 [L1] FINAL STATE COMMITTED`, sig);
             addLedgerEntry("info", `💰 [L1] REFUNDED REMAINING COLLATERAL.`);
         }
     } catch (e) {
          console.error("Close failed", e);
+         addLedgerEntry("info", `❌ SETTLEMENT FAILED: ${e}`);
     }
     
     await fetchBalances();
@@ -403,11 +403,19 @@ export function ZeroClawTerminal() {
                   
                   // Handle Protocol Setup Links from Server
                   if (data.status === "SETUP_COMPLETE") {
-                      if (data.session.l1Sig && data.session.l1Sig !== "ALREADY_DELEGATED") {
-                          addLedgerEntry("tx", `✅ [L1] SESSION INITIALIZED`, data.session.l1Sig);
+                      if (data.session.l1Sig) {
+                          if (data.session.l1Sig === "ALREADY_DELEGATED") {
+                              addLedgerEntry("info", `♻️ [L1] REUSING ACTIVE SESSION | PDA: ${data.session.pda.substring(0, 8)}...`);
+                          } else {
+                              addLedgerEntry("tx", `✅ [L1] SESSION INITIALIZED`, data.session.l1Sig);
+                          }
                       }
-                      if (data.session.delegateSig && data.session.delegateSig !== "ALREADY_DELEGATED") {
-                          addLedgerEntry("tx", `✅ [L1] STATE DELEGATED`, data.session.delegateSig);
+                      if (data.session.delegateSig) {
+                          if (data.session.delegateSig === "ALREADY_DELEGATED") {
+                              addLedgerEntry("info", `⚡ [MagicBlock] STATE DELEGATION VERIFIED`);
+                          } else {
+                              addLedgerEntry("tx", `✅ [L1] STATE DELEGATED`, data.session.delegateSig);
+                          }
                       }
                       if (data.balances) {
                           setSolBalance(data.balances.sol);
@@ -435,7 +443,7 @@ export function ZeroClawTerminal() {
                       // Use the ER receipt from the server instead of local transaction
                       const tickSig = data.er_receipt;
                       if (tickSig) {
-                          addLedgerEntry("settlement", `⚡ [ER] PER-TOKEN | cost: ${COST_PER_TOKEN_USDC.toFixed(6)} USDC`, tickSig, false);
+                          addLedgerEntry("settlement", `⚡ [MagicBlock] PER-TOKEN | cost: ${COST_PER_TOKEN_USDC.toFixed(6)} USDC`, tickSig, false);
                       }
                       
                       const t1 = performance.now();

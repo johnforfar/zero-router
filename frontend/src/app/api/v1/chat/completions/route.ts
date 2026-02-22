@@ -51,47 +51,59 @@ export async function POST(req: NextRequest) {
 
             client = new PayStreamClient(connection, wallet as any);
             const userPubkey = keypair.publicKey;
-            const providerPubkey = new PublicKey(process.env.NEXT_PUBLIC_PROVIDER_WALLET || "9pYyW7Vq8vR1v8yG7XJmK8z9w9hS6z2yL6R1f8gH7J3");
+            const hostPubkey = new PublicKey(process.env.NEXT_PUBLIC_PROVIDER_WALLET || "9pYyW7Vq8vR1v8yG7XJmK8z9w9hS6z2yL6R1f8gH7J3");
 
-            const [pda] = PublicKey.findProgramAddressSync([Buffer.from("session_v1"), userPubkey.toBuffer(), providerPubkey.toBuffer()], PAYSTREAM_PROGRAM_ID);
+            const [pda] = PublicKey.findProgramAddressSync([Buffer.from("session_final_v1"), userPubkey.toBuffer(), hostPubkey.toBuffer()], PAYSTREAM_PROGRAM_ID);
             sessionPdaStr = pda.toBase58();
             client.sessionPda = pda;
             client.payerPubkey = userPubkey;
-            client.providerPubkey = providerPubkey;
+            client.hostPubkey = hostPubkey;
             log(`Derived Session PDA: ${sessionPdaStr}`);
 
             solBalance = (await connection.getBalance(userPubkey)) / LAMPORTS_PER_SOL;
             log(`Current SOL Balance: ${solBalance}`);
             
-            const isInitialized = await client.isSessionInitialized(userPubkey, providerPubkey);
-            if (!isInitialized) {
-                log("Session NOT initialized. Sending L1 Initialize transaction...");
-                const initIx = await client.initializeSession(userPubkey, providerPubkey, 1000000, 100);
-                const tx = new Transaction().add(initIx);
-                const { blockhash } = await connection.getLatestBlockhash();
-                tx.recentBlockhash = blockhash;
-                tx.feePayer = userPubkey;
-                const signed = await wallet.signTransaction(tx);
-                l1Sig = await connection.sendRawTransaction(signed.serialize());
-                await connection.confirmTransaction(l1Sig, "confirmed");
-                log(`L1 Initialize Success: ${l1Sig}`);
-            }
-
+            // Use 'processed' to detect the absolute latest state
+            const sessionInfo = await connection.getAccountInfo(pda, "processed");
+            const isInitialized = sessionInfo !== null;
+            
             const delegationRecordPda = delegationRecordPdaFromDelegatedAccount(pda);
-            const delegationInfo = await connection.getAccountInfo(delegationRecordPda);
-            if (!delegationInfo) {
-                log("Session NOT delegated. Sending L1 Delegate transaction...");
-                const delegateIx = await client.delegateSession();
-                const tx = new Transaction().add(delegateIx);
+            const delegationInfo = await connection.getAccountInfo(delegationRecordPda, "processed");
+            const isDelegated = delegationInfo !== null;
+
+            if (!isInitialized || !isDelegated) {
+                log("Session needs setup. Building atomic transaction...");
+                const setupTx = new Transaction();
+                
+                // Always add InitializeStream if not delegated to ensure PDA exists for delegation
+                // Program uses init_if_needed so this is safe and idempotent
+                log("  + Adding InitializeStream instruction");
+                const initIx = await client.initializeSession(userPubkey, hostPubkey, 1000000, 100);
+                setupTx.add(initIx);
+
+                if (!isDelegated) {
+                    log("  + Adding Delegate instruction");
+                    const delegateIx = await client.delegateSession();
+                    setupTx.add(delegateIx);
+                }
+
                 const { blockhash } = await connection.getLatestBlockhash();
-                tx.recentBlockhash = blockhash;
-                tx.feePayer = userPubkey;
-                const signed = await wallet.signTransaction(tx);
-                delegateSig = await connection.sendRawTransaction(signed.serialize());
-                await connection.confirmTransaction(delegateSig, "confirmed");
-                log(`L1 Delegate Success: ${delegateSig}`);
+                setupTx.recentBlockhash = blockhash;
+                setupTx.feePayer = userPubkey;
+                
+                const signedSetupTx = await wallet.signTransaction(setupTx);
+                // Use skipPreflight: true to bypass simulation race conditions during atomic setup
+                const setupSig = await connection.sendRawTransaction(signedSetupTx.serialize(), {
+                    skipPreflight: true
+                });
+                await connection.confirmTransaction(setupSig, "confirmed");
+                log(`L1 Setup Transaction Success: ${setupSig}`);
+                
+                l1Sig = !isInitialized ? setupSig : "ALREADY_DELEGATED";
+                delegateSig = !isDelegated ? setupSig : "ALREADY_DELEGATED";
             } else {
-                log("Session already delegated to Ephemeral Rollup.");
+                log("Session already initialized and delegated.");
+                l1Sig = "ALREADY_DELEGATED";
                 delegateSig = "ALREADY_DELEGATED";
             }
         } catch (solanaErr: any) {
