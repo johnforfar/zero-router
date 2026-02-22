@@ -6,6 +6,7 @@ out/
 build/
 .env
 .env.local
+.env.local.BACKUP
 .env.production
 npm-debug.log*
 yarn-debug.log*

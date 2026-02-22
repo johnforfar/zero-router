@@ -188,14 +188,13 @@ pub struct DelegateInput<'info> {
     pub payer: Signer<'info>,
     /// CHECK: Provider used for seed verification
     pub provider: UncheckedAccount<'info>,
-    /// CHECK: The account to be delegated
     #[account(
         mut,
         seeds = [b"session_v1", payer.key().as_ref(), provider.key().as_ref()],
-        bump,
+        bump = pda.bump,
         del
     )]
-    pub pda: AccountInfo<'info>,
+    pub pda: Account<'info, SessionAccount>,
     pub system_program: Program<'info, System>,
 }
 

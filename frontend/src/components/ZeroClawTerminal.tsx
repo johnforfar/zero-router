@@ -192,19 +192,20 @@ export function ZeroClawTerminal() {
                     content: `⚡ [STREAM] batch_settle(${(last.count || 1) + 1})`,
                     subEntries: [...(last.subEntries || []), newSubEntry],
                     isStreaming: isStreaming,
-                    isExpanded: true // Auto-expand when streaming
+                    isExpanded: true, // Always expand settlement batches
+                    sig: undefined // Don't show a top-level signature for a batch
                 };
                 return updated;
             }
         }
-        return [...prev, { 
-            id: Math.random().toString(36), 
-            type, 
-            content, 
-            sig, 
+        return [...prev, {
+            id: Math.random().toString(36),
+            type,
+            content,
+            sig: type === "tx" ? sig : undefined, // Top-level sig only for "tx" type
             isStreaming,
             isExpanded: type === "settlement" ? true : undefined,
-            subEntries: sig ? [{ sig, content }] : [] 
+            subEntries: (type === "settlement" && sig) ? [{ sig, content }] : (sig ? [{ sig, content }] : [])
         }];
     });
   };
@@ -222,8 +223,8 @@ export function ZeroClawTerminal() {
     });
 
     try {
-        const ix = await payStreamClient.recordUsage(tokenCount);
-        const tx = new Transaction().add(ix);
+        const ixs = await payStreamClient.recordUsage(tokenCount);
+        const tx = new Transaction().add(...ixs);
         
         const { blockhash } = await connection.getLatestBlockhash();
         tx.recentBlockhash = blockhash;
@@ -385,7 +386,8 @@ export function ZeroClawTerminal() {
     setInput("");
     setIsTyping(true);
     setIdleSeconds(0);
-    if (!sessionActive) await startERSession(connected ? publicKey?.toBase58()! : demoWallet);
+    // Note: We skip local startERSession because the Vercel API route handles session auto-initialization & delegation server-side
+    // if (!sessionActive) await startERSession(connected ? publicKey?.toBase58()! : demoWallet);
 
     try {
       const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL!;
@@ -414,6 +416,22 @@ export function ZeroClawTerminal() {
           for (const line of lines) {
               try {
                   const data = JSON.parse(line.replace('data: ', ''));
+                  
+                  // Handle Protocol Setup Links from Server
+                  if (data.status === "SETUP_COMPLETE") {
+                      if (data.session.l1Sig && data.session.l1Sig !== "ALREADY_DELEGATED") {
+                          addLedgerEntry("tx", `✅ [L1] SESSION INITIALIZED`, data.session.l1Sig);
+                      }
+                      if (data.session.delegateSig && data.session.delegateSig !== "ALREADY_DELEGATED") {
+                          addLedgerEntry("tx", `✅ [L1] STATE DELEGATED`, data.session.delegateSig);
+                      }
+                      if (data.balances) {
+                          setSolBalance(data.balances.sol);
+                          dispatchBalanceUpdate(data.balances.sol, currentUsdc);
+                      }
+                      setSessionActive(true);
+                  }
+
                   if (data.choices && data.choices[0].delta.content) {
                       const content = data.choices[0].delta.content;
                       inferenceText += content;
@@ -430,23 +448,11 @@ export function ZeroClawTerminal() {
                       setTotalSpent(prev => prev + COST_PER_TOKEN_USDC);
                       dispatchBalanceUpdate(solBalance, currentUsdc);
                       
-                      // REAL TX EVERY BATCH_SIZE TOKENS (NOW ON ER)
-                      let tickSig: string | undefined = undefined;
-                      if (tokenCount % BATCH_SIZE === 0) {
-                           if (payStreamClient) {
-                               const ix = await payStreamClient.recordUsage(BATCH_SIZE);
-                               const tx = new Transaction().add(ix);
-                               
-                               const { blockhash } = await connection.getLatestBlockhash();
-                               tx.recentBlockhash = blockhash;
-                               tx.feePayer = payStreamClient.provider.wallet.publicKey;
-                               
-                               const signed = await payStreamClient.provider.wallet.signTransaction(tx);
-                               tickSig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: true });
-                           }
+                      // Use the ER receipt from the server instead of local transaction
+                      const tickSig = data.er_receipt;
+                      if (tickSig) {
+                          addLedgerEntry("settlement", `⚡ [ER] PER-TOKEN TICK | cost: ${COST_PER_TOKEN_USDC.toFixed(6)} USDC`, tickSig, true);
                       }
-
-                      addLedgerEntry("settlement", `⚡ batch_settle(${BATCH_SIZE}) | cost: ${(COST_PER_TOKEN_USDC * BATCH_SIZE).toFixed(6)} USDC`, tickSig, true);
                       
                       const t1 = performance.now();
                       const currentLatency = t1 - t0 + 0.05;
@@ -658,13 +664,13 @@ export function ZeroClawTerminal() {
                                     <div className={`break-all ${theme.ledgerEntryText} font-medium`}>
                                         {entry.content}
                                         {entry.sig && (
-                                            <a 
-                                                href={`https://explorer.solana.com/tx/${entry.sig}?cluster=devnet`} 
-                                                target="_blank" 
+                                            <a
+                                                href={`https://solscan.io/tx/${entry.sig}?cluster=devnet`}
+                                                target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="ml-2 text-blue-500 underline hover:text-blue-400 text-[10px]"
+                                                className="ml-2 text-blue-500 underline hover:text-blue-400 text-[10px] font-bold"
                                             >
-                                                [VIEW_TX]
+                                                [VIEW_L1]
                                             </a>
                                         )}
                                     </div>
@@ -674,11 +680,11 @@ export function ZeroClawTerminal() {
                                                 <div key={j} className="text-slate-400 truncate flex items-center justify-between">
                                                     <span>{sub.content}</span>
                                                     {sub.sig && (
-                                                        <a 
-                                                            href={`https://explorer.magicblock.app/tx/${sub.sig}?cluster=devnet`} 
-                                                            target="_blank" 
+                                                        <a
+                                                            href={`https://explorer.solana.com/tx/${sub.sig}?cluster=custom&customUrl=https%3A%2F%2Fdevnet-as.magicblock.app`}
+                                                            target="_blank"
                                                             rel="noopener noreferrer"
-                                                            className="ml-2 text-blue-400 underline hover:text-blue-300 text-[9px] whitespace-nowrap"
+                                                            className="ml-2 text-yellow-500 underline hover:text-yellow-400 text-[9px] whitespace-nowrap font-bold"
                                                         >
                                                             [ER_TX]
                                                         </a>
