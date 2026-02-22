@@ -3,8 +3,11 @@ import "./globals.css";
 import { Providers } from "./providers";
 
 export const metadata: Metadata = {
-  title: "ZeroRouter - High Performance AI Utility",
-  description: "Real-time pay-per-token AI infrastructure on Solana",
+  title: "ZeroRouter 🌊",
+  description: "High-performance AI inference settlement protocol",
+  icons: {
+    icon: "/favicon.svg",
+  }
 };
 
 export default function RootLayout({
