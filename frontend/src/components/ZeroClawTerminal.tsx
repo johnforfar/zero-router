@@ -39,8 +39,7 @@ export function ZeroClawTerminal() {
     const initRealLogs = async () => {
         setZeroclawLogs(["--- Connecting to ZeroClaw Core ---"]);
         try {
-            const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL;
-            if (!apiBase) throw new Error("API URL not configured");
+            const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL || "https://api.zerorouter.xyz";
             const response = await fetch(`${apiBase}/v1/cmd`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -118,8 +117,7 @@ export function ZeroClawTerminal() {
     }
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL;
-      if (!apiBase) throw new Error("API URL not configured");
+      const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL || "https://api.zerorouter.xyz";
       const response = await fetch(`${apiBase}/v1/chat/completions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
