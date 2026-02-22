@@ -1,19 +1,54 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
-import { Wallet, Coins, ArrowUpRight, ShieldCheck } from "lucide-react";
+import { Wallet, Coins, ArrowUpRight, ShieldCheck, ExternalLink } from "lucide-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { PublicKey, LAMPORTS_PER_SOL } from "@solana/web3.js";
 
 export function WalletStatus() {
-  const [solBalance, setSolBalance] = useState(1.25);
-  const [usdcBalance, setUsdcBalance] = useState(100.0);
-  const address = "7xKWR8j5XpQ2z9n...M4uN";
+  const { connection } = useConnection();
+  const { publicKey, connected } = useWallet();
+  const [solBalance, setSolBalance] = useState(0);
+  const [usdcBalance, setUsdcBalance] = useState(0);
+  
+  const DEMO_WALLET = process.env.NEXT_PUBLIC_DEMO_WALLET || "2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm";
+  const displayAddress = connected ? publicKey?.toBase58() : DEMO_WALLET;
+  const shortAddress = displayAddress ? `${displayAddress.substring(0, 8)}...${displayAddress.substring(displayAddress.length - 4)}` : "None";
+
+  useEffect(() => {
+    const fetchBalances = async () => {
+        if (!displayAddress) return;
+        try {
+            const pubkey = new PublicKey(displayAddress);
+            const balance = await connection.getBalance(pubkey);
+            setSolBalance(balance / LAMPORTS_PER_SOL);
+            
+            // For PoC, usdcBalance is simulated based on SOL if no real SPL token exists, 
+            // but we show the real SOL balance.
+            setUsdcBalance(100.00); // Simulated for demo
+        } catch (e) {
+            console.error("Failed to fetch balance", e);
+        }
+    };
+
+    fetchBalances();
+    const id = setInterval(fetchBalances, 10000);
+    return () => clearInterval(id);
+  }, [displayAddress, connection]);
 
   return (
     <div className="flex items-center gap-4 bg-black/40 border border-white/5 px-4 py-2 rounded-lg backdrop-blur-sm shadow-inner group transition-all hover:border-[#00C2FF]/20">
       <div className="flex flex-col items-end">
         <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-slate-500 group-hover:text-slate-400 transition-colors">{address}</span>
-            <div className="w-1.5 h-1.5 rounded-full bg-[#14F195] animate-pulse"></div>
+            <a 
+              href={`https://explorer.solana.com/address/${displayAddress}?cluster=devnet`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[10px] font-mono text-slate-500 group-hover:text-[#14F195] transition-colors flex items-center gap-1"
+            >
+                {shortAddress} <ExternalLink size={8} />
+            </a>
+            <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-[#14F195]" : "bg-[#9945FF]"} animate-pulse`}></div>
         </div>
         <div className="flex gap-3 mt-1">
             <div className="flex items-center gap-1">

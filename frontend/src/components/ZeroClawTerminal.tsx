@@ -31,7 +31,7 @@ export function ZeroClawTerminal() {
   const rollupScrollRef = useRef<HTMLDivElement>(null);
 
   const COST_PER_TOKEN = 0.0001;
-  const demoWallet = "2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm";
+  const demoWallet = process.env.NEXT_PUBLIC_DEMO_WALLET || "2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm";
   const isDemoMode = !connected;
 
   // Initialize REAL logs
