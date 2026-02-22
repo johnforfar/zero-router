@@ -1,11 +1,12 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
-import { Terminal, Shield, Cpu, Zap, Activity, ChevronRight, X, Minus, Square, ExternalLink, RefreshCw, Wallet, Clock, Coins, Database, Server, Trash2, ChevronDown, ChevronUp, Loader2 } from "lucide-react";
+import { Terminal, Shield, Cpu, Zap, Activity, ChevronRight, X, Minus, Square, ExternalLink, RefreshCw, Wallet, Clock, Coins, Database, Server, Trash2, ChevronDown, ChevronUp, Loader2, RotateCcw, Sun, Moon } from "lucide-react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
-import { Connection, PublicKey, LAMPORTS_PER_SOL, Transaction, SystemProgram } from "@solana/web3.js";
+import { Connection, PublicKey, LAMPORTS_PER_SOL, Transaction, SystemProgram, Keypair } from "@solana/web3.js";
 import { signTransactionServer } from "@/app/actions";
 import ReactMarkdown from "react-markdown";
+import { PayStreamClient, DemoWallet } from "@/utils/magic";
 
 interface LedgerEntry {
   id: string;
@@ -19,13 +20,91 @@ interface LedgerEntry {
 }
 
 export function ZeroClawTerminal() {
-  const { publicKey, connected } = useWallet();
+  const { publicKey, connected, signTransaction, signAllTransactions } = useWallet();
   const { connection } = useConnection();
+  const [payStreamClient, setPayStreamClient] = useState<PayStreamClient | null>(null);
+
+  useEffect(() => {
+    if (connection) {
+        if (connected && publicKey && signTransaction && signAllTransactions) {
+            // Create a Wallet adapter for Anchor that bridges the React hook
+            const wallet = {
+                publicKey,
+                signTransaction,
+                signAllTransactions,
+                payer: undefined as any // Anchor Provider technically requires this property on the interface, but we don't use it for signing
+            };
+            setPayStreamClient(new PayStreamClient(connection, wallet as any));
+        } else {
+            // Default to Demo Wallet if not connected
+            const wallet = new DemoWallet(process.env.NEXT_PUBLIC_DEMO_WALLET!);
+            setPayStreamClient(new PayStreamClient(connection, wallet as any));
+        }
+    }
+  }, [connection, connected, publicKey, signTransaction, signAllTransactions]);
+
   const [activeTab, setActiveTab] = useState<"ai-chat" | "zeroclaw">("ai-chat");
+  const [isDarkMode, setIsDarkMode] = useState(true);
+
+  const theme = isDarkMode ? {
+    bg: "bg-slate-950",
+    text: "text-blue-400",
+    border: "border-blue-900",
+    headerBg: "bg-slate-900",
+    headerBorder: "border-blue-900",
+    headerText: "text-blue-400",
+    panelBg: "bg-slate-900/90",
+    panelBorder: "border-blue-900",
+    tabActive: "bg-blue-900/30 text-blue-300 border-blue-500",
+    tabInactive: "text-slate-500 hover:text-blue-400 hover:bg-blue-900/20",
+    tabBorder: "border-blue-900",
+    outputText: "text-blue-100",
+    inputBg: "bg-slate-900",
+    inputBorder: "border-blue-900",
+    inputText: "text-blue-100",
+    inputPlaceholder: "placeholder-blue-800",
+    ledgerBg: "bg-slate-950",
+    ledgerBorder: "border-blue-900",
+    ledgerHeaderBg: "bg-slate-900",
+    ledgerHeaderText: "text-blue-300",
+    ledgerEntryBg: "bg-slate-900",
+    ledgerEntryBorder: "border-blue-800/60",
+    ledgerEntryText: "text-blue-200",
+    statBg: "bg-slate-900",
+    statText: "text-blue-400",
+    statBorder: "border-blue-900"
+  } : {
+    bg: "bg-white",
+    text: "text-blue-600",
+    border: "border-blue-200",
+    headerBg: "bg-white",
+    headerBorder: "border-blue-200",
+    headerText: "text-blue-800",
+    panelBg: "bg-white/90",
+    panelBorder: "border-blue-100",
+    tabActive: "bg-blue-50 text-blue-700 border-blue-500",
+    tabInactive: "text-gray-400 hover:text-blue-500 hover:bg-blue-50/50",
+    tabBorder: "border-blue-100",
+    outputText: "text-slate-800",
+    inputBg: "bg-white",
+    inputBorder: "border-blue-100",
+    inputText: "text-slate-800",
+    inputPlaceholder: "placeholder-blue-300",
+    ledgerBg: "bg-slate-50",
+    ledgerBorder: "border-blue-100",
+    ledgerHeaderBg: "bg-white",
+    ledgerHeaderText: "text-slate-700",
+    ledgerEntryBg: "bg-white",
+    ledgerEntryBorder: "border-blue-200/60",
+    ledgerEntryText: "text-slate-600",
+    statBg: "bg-white",
+    statText: "text-slate-600",
+    statBorder: "border-blue-100"
+  };
   
   const [inferenceLogs, setInferenceLogs] = useState<string[]>([
     "--- ZeroRouter v1.0.0 (Sovereign API) ---",
-    "Linking: Cloud Intelligence Grid",
+    "Linking: Google DeepMind Grid (Gemini 2 Flash)",
     "Status: READY. Ephemeral Rollup standby."
   ]);
   
@@ -38,6 +117,7 @@ export function ZeroClawTerminal() {
   const [zeroclawLogs, setZeroclawLogs] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [isResetting, setIsResetting] = useState(false);
   const [sessionActive, setSessionActive] = useState(false);
   const closingRef = useRef(false);
   const [idleSeconds, setIdleSeconds] = useState(0);
@@ -55,10 +135,11 @@ export function ZeroClawTerminal() {
   const inferenceScrollRef = useRef<HTMLDivElement>(null);
   const rollupScrollRef = useRef<HTMLDivElement>(null);
 
-  const COST_PER_TOKEN = 0.0001;
-  const SESSION_COLLATERAL = 0.5;
-  const MAGICBLOCK_FEE = 0.01;
+  const COST_PER_TOKEN_USDC = 0.000001;
+  const BATCH_SIZE = 1; // Send a real TX every single token for true per-token payment streaming
+  
   const demoWallet = process.env.NEXT_PUBLIC_DEMO_WALLET!;
+  const providerWallet = process.env.NEXT_PUBLIC_PROVIDER_WALLET || "9pYyW7Vq8vR1v8yG7XJmK8z9w9hS6z2yL6R1f8gH7J3";
 
   const dispatchBalanceUpdate = (sol: number, usdc: number) => {
     window.dispatchEvent(new CustomEvent("balance-update", { detail: { sol, usdc } }));
@@ -91,22 +172,10 @@ export function ZeroClawTerminal() {
     return () => clearInterval(id);
   }, [connected, publicKey, demoWallet, connection]);
 
-  const performRealTick = async () => {
-    const addr = connected ? publicKey?.toBase58() : demoWallet;
-    if (!addr) return "ERR_NO_WALLET";
-    try {
-        const userPubkey = new PublicKey(addr);
-        const tx = new Transaction().add(SystemProgram.transfer({ fromPubkey: userPubkey, toPubkey: userPubkey, lamports: 1 }));
-        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
-        tx.feePayer = userPubkey;
-        if (!connected) {
-            const serialized = tx.serialize({ requireAllSignatures: false }).toString('base64');
-            const signedBase64 = await signTransactionServer(serialized);
-            const signedTx = Transaction.from(Buffer.from(signedBase64, 'base64'));
-            return await connection.sendRawTransaction(signedTx.serialize());
-        }
-        return "DEV_" + Math.random().toString(36).substring(2, 12);
-    } catch (e) { return "FAIL_" + Math.random().toString(36).substring(2, 10); }
+  const toggleEntry = (id: string) => {
+    setLedgerEntries(prev => prev.map(entry => 
+      entry.id === id ? { ...entry, isExpanded: !entry.isExpanded } : entry
+    ));
   };
 
   const addLedgerEntry = (type: LedgerEntry["type"], content: string, sig?: string, isStreaming = false) => {
@@ -115,13 +184,14 @@ export function ZeroClawTerminal() {
             const last = prev[prev.length - 1];
             if (last.type === "settlement" && last.isStreaming) {
                 const updated = [...prev];
-                const newSubEntry = { sig: sig || undefined, content };
+                const newSubEntry = { sig, content };
                 updated[updated.length - 1] = {
                     ...last,
                     count: (last.count || 1) + 1,
-                    content: `⚡ [ER] per_token_settle(${(last.count || 1) + 1})`,
+                    content: `⚡ [STREAM] batch_settle(${(last.count || 1) + 1})`,
                     subEntries: [...(last.subEntries || []), newSubEntry],
-                    isStreaming: isStreaming
+                    isStreaming: isStreaming,
+                    isExpanded: true // Auto-expand when streaming
                 };
                 return updated;
             }
@@ -132,61 +202,134 @@ export function ZeroClawTerminal() {
             content, 
             sig, 
             isStreaming,
-            subEntries: [{ sig, content }] 
+            isExpanded: type === "settlement" ? true : undefined,
+            subEntries: sig ? [{ sig, content }] : [] 
         }];
     });
   };
 
   const finalizeLedgerBatch = async (tokenCount: number) => {
+    if (!payStreamClient) return;
+
     setLedgerEntries(prev => {
         if (prev.length > 0 && prev[prev.length - 1].type === "settlement") {
             const updated = [...prev];
-            updated[updated.length - 1] = { ...updated[updated.length - 1], isStreaming: true };
+            updated[updated.length - 1] = { ...updated[updated.length - 1], isStreaming: true, isExpanded: false }; // Auto-collapse
             return updated;
         }
         return prev;
     });
 
-    // Send a real L1 TX to anchor the ER batch
-    const sig = await performRealTick();
-    
-    setLedgerEntries(prev => {
-        if (prev.length > 0 && prev[prev.length - 1].type === "settlement") {
-            const updated = [...prev];
-            updated[updated.length - 1] = { 
-                ...updated[updated.length - 1], 
-                isStreaming: false,
-                content: `📦 [L1] ANCHORED ${tokenCount} TOKENS. TX: ${sig}`,
-                sig: sig
-            };
-            return updated;
-        }
-        return prev;
-    });
-    await fetchBalances();
+    try {
+        const ix = await payStreamClient.recordUsage(tokenCount);
+        const tx = new Transaction().add(ix);
+        
+        const { blockhash } = await connection.getLatestBlockhash();
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = payStreamClient.provider.wallet.publicKey;
+        
+        const signed = await payStreamClient.provider.wallet.signTransaction(tx);
+        const sig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: true });
+
+        setLedgerEntries(prev => {
+            if (prev.length > 0 && prev[prev.length - 1].type === "settlement") {
+                const updated = [...prev];
+                updated[updated.length - 1] = { 
+                    ...updated[updated.length - 1], 
+                    isStreaming: false,
+                    content: `📦 [L1] ANCHORED ${tokenCount} TOKENS. TX: ${sig}`,
+                    sig: sig || undefined,
+                    isExpanded: false
+                };
+                return updated;
+            }
+            return prev;
+        });
+        await fetchBalances(); 
+    } catch (e) {
+        console.error("Tick failed", e);
+    }
   };
 
   const startERSession = async (userAddr: string) => {
+    if (!payStreamClient) {
+        console.error("PayStreamClient not ready");
+        return;
+    }
     setInferenceLogs(prev => [...prev, "🚀 INITIALIZING SOVEREIGN AI SESSION..."]);
-    addLedgerEntry("info", `🔗 [ER] INITIATING DELEGATION FROM ${userAddr.substring(0,8)}...`);
+    addLedgerEntry("info", `🔗 [L1] CREATING SESSION & DEPOSITING USDC...`);
     
-    const newSol = solBalance - SESSION_COLLATERAL - MAGICBLOCK_FEE;
-    setSolBalance(newSol);
-    dispatchBalanceUpdate(newSol, usdcBalance);
-    
-    const sig = await performRealTick();
-    addLedgerEntry("tx", `✅ [ER] STATE DELEGATED. SIG: ${sig}`, sig);
-    setSessionActive(true);
-    closingRef.current = false;
+    try {
+        const userPubkey = new PublicKey(userAddr);
+        const providerPubkey = new PublicKey(providerWallet);
+
+        // 1. Initialize Session (Deposit 100 USDC for now, or minimal)
+        // Rate: 100 (0.0001 USDC)
+        const initIx = await payStreamClient.initializeSession(userPubkey, providerPubkey, 1000000, 100); 
+        
+        const tx = new Transaction().add(initIx);
+        let sig = "";
+        
+        // Unified signing (works for both Connected Wallet and Demo Wallet)
+        const { blockhash } = await connection.getLatestBlockhash();
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = payStreamClient.provider.wallet.publicKey;
+        
+        // Sign and Send
+        const signed = await payStreamClient.provider.wallet.signTransaction(tx);
+        sig = await connection.sendRawTransaction(signed.serialize());
+
+        addLedgerEntry("tx", `✅ [L1] SESSION INITIALIZED. SIG: ${sig}`, sig);
+        
+        // 2. Delegate
+        addLedgerEntry("info", `🔗 [L1] DELEGATING TO EPHEMERAL ROLLUP...`);
+        const delegateIx = await payStreamClient.delegateSession();
+        const tx2 = new Transaction().add(delegateIx);
+        
+        const { blockhash: blockhash2 } = await connection.getLatestBlockhash();
+        tx2.recentBlockhash = blockhash2;
+        tx2.feePayer = payStreamClient.provider.wallet.publicKey;
+        
+        const signed2 = await payStreamClient.provider.wallet.signTransaction(tx2);
+        const sig2 = await connection.sendRawTransaction(signed2.serialize());
+        
+        addLedgerEntry("tx", `✅ [ER] STATE DELEGATED. SIG: ${sig2}`, sig2);
+
+        setSessionActive(true);
+        closingRef.current = false;
+    } catch (e) {
+        console.error("Failed to start session", e);
+        addLedgerEntry("info", `❌ SESSION START FAILED: ${e}`);
+    }
   };
 
   const closeERSession = async () => {
-    if (closingRef.current) return;
+    if (closingRef.current || !payStreamClient) return;
     closingRef.current = true;
     addLedgerEntry("info", "🔒 [ER] SESSION TIMEOUT (15s IDLE). SETTLING...");
-    const sig = await performRealTick();
-    addLedgerEntry("tx", `📦 [L1] FINAL STATE COMMITTED. TX: ${sig}`, sig);
-    addLedgerEntry("info", `💰 [L1] RECLAIMED ${SESSION_COLLATERAL} SOL COLLATERAL.`);
+    
+    try {
+        const userPubkey = payStreamClient.provider.wallet.publicKey;
+        const providerPubkey = new PublicKey(providerWallet);
+        const closeIx = await payStreamClient.closeSession(userPubkey, providerPubkey);
+        
+        const tx = new Transaction().add(closeIx);
+        
+        const { blockhash } = await connection.getLatestBlockhash();
+        tx.recentBlockhash = blockhash;
+        tx.feePayer = userPubkey;
+        
+        const signed = await payStreamClient.provider.wallet.signTransaction(tx);
+        const sig = await connection.sendRawTransaction(signed.serialize());
+
+        if (sig) {
+            addLedgerEntry("tx", `📦 [L1] FINAL STATE COMMITTED. TX: ${sig}`, sig);
+            addLedgerEntry("info", `💰 [L1] REFUNDED REMAINING COLLATERAL.`);
+        }
+    } catch (e) {
+         console.error("Close failed", e);
+    }
+    
     await fetchBalances();
     setSessionActive(false);
     setIdleSeconds(0);
@@ -215,7 +358,10 @@ export function ZeroClawTerminal() {
       const response = await fetch(`${apiBase}/v1/chat/completions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ messages: [{ role: "user", content: cmd }] })
+          body: JSON.stringify({
+              model: "gemini-2.0-flash",
+              messages: [{ role: "user", content: cmd }]
+          })
       });
       if (!response.body) throw new Error("No response body");
       const reader = response.body.getReader();
@@ -240,13 +386,29 @@ export function ZeroClawTerminal() {
                       setInferenceLogs(prev => { const n = [...prev]; n[n.length - 1] = inferenceText; return n; });
                       
                       const t0 = performance.now();
-                      currentUsdc -= COST_PER_TOKEN;
+                      currentUsdc -= COST_PER_TOKEN_USDC;
                       tokenCount++;
                       setUsdcBalance(currentUsdc);
-                      setTotalSpent(prev => prev + COST_PER_TOKEN);
+                      setTotalSpent(prev => prev + COST_PER_TOKEN_USDC);
                       dispatchBalanceUpdate(solBalance, currentUsdc);
                       
-                      addLedgerEntry("settlement", `⚡ per_token_settle(1) | cost: ${COST_PER_TOKEN.toFixed(6)} USDC`, undefined, true);
+                      // REAL TX EVERY BATCH_SIZE TOKENS (NOW ON ER)
+                      let tickSig: string | undefined = undefined;
+                      if (tokenCount % BATCH_SIZE === 0) {
+                           if (payStreamClient) {
+                               const ix = await payStreamClient.recordUsage(BATCH_SIZE);
+                               const tx = new Transaction().add(ix);
+                               
+                               const { blockhash } = await connection.getLatestBlockhash();
+                               tx.recentBlockhash = blockhash;
+                               tx.feePayer = payStreamClient.provider.wallet.publicKey;
+                               
+                               const signed = await payStreamClient.provider.wallet.signTransaction(tx);
+                               tickSig = await connection.sendRawTransaction(signed.serialize(), { skipPreflight: true });
+                           }
+                      }
+
+                      addLedgerEntry("settlement", `⚡ batch_settle(${BATCH_SIZE}) | cost: ${(COST_PER_TOKEN_USDC * BATCH_SIZE).toFixed(6)} USDC`, tickSig, true);
                       
                       const t1 = performance.now();
                       const currentLatency = t1 - t0 + 0.05;
@@ -280,6 +442,13 @@ export function ZeroClawTerminal() {
     } catch (err) { setZeroclawLogs(prev => [...prev, "ERR: Gateway unreachable."]); } finally { setIsTyping(false); }
   };
 
+  const handleReset = async () => {
+    if (isResetting) return;
+    setIsResetting(true);
+    setInferenceLogs(prev => [...prev, "♻️ RESETTING PROTOCOL STATE..."]);
+    setTimeout(() => { window.location.reload(); }, 1000);
+  };
+
   useEffect(() => {
     if (inferenceScrollRef.current) inferenceScrollRef.current.scrollTop = inferenceScrollRef.current.scrollHeight;
     if (rollupScrollRef.current) rollupScrollRef.current.scrollTop = rollupScrollRef.current.scrollHeight;
@@ -296,133 +465,184 @@ export function ZeroClawTerminal() {
         }, 1000);
     }
     return () => clearInterval(interval);
-  }, [sessionActive, isTyping]);
+  }, [sessionActive, isTyping]); // Added missing dependency
 
-  const toggleExpand = (id: string) => {
-    setLedgerEntries(prev => prev.map(e => e.id === id ? { ...e, isExpanded: !e.isExpanded } : e));
-  };
-
-  const renderEntry = (entry: LedgerEntry) => {
-    const sig = entry.sig;
-    const isSettlement = entry.type === "settlement";
-    
-    const url = `https://solscan.io/tx/${sig}?cluster=devnet`;
-
-    return (
-      <div className="flex gap-2 items-start group">
-        <span className="text-slate-700 select-none mt-0.5">»</span>
-        <div className="flex flex-col gap-1 w-full overflow-hidden text-left">
-            <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-2 truncate text-left w-full">
-                    <div className="text-slate-400 group-hover:text-slate-300 transition-colors truncate text-left flex-1">
-                        {entry.content}
-                        {sig && (
-                            <a href={url} target="_blank" rel="noopener noreferrer" className="ml-1 text-[#00C2FF] hover:underline inline-flex items-center gap-0.5">
-                                {sig.substring(0,8)}... <ExternalLink size={8} />
-                            </a>
-                        )}
-                    </div>
-                    {entry.isStreaming && <Loader2 size={8} className="animate-spin text-[#14F195] flex-none" />}
-                </div>
-                {entry.count && entry.count > 1 && (
-                    <button onClick={() => toggleExpand(entry.id)} className="flex items-center gap-1 bg-[#14F195]/20 text-[#14F195] hover:bg-[#14F195]/30 text-[7px] px-1 rounded font-bold transition-colors flex-none">
-                        x{entry.count} {entry.isExpanded ? <ChevronUp size={8} /> : <ChevronDown size={8} />}
-                    </button>
-                )}
-            </div>
-            {entry.isExpanded && entry.subEntries && (
-                <div className="mt-1 ml-2 border-l border-white/10 pl-2 flex flex-col gap-1 max-h-40 overflow-y-auto scrollbar-hide">
-                    {entry.subEntries.map((sub, i) => {
-                        return (
-                            <div key={i} className="flex items-center justify-between text-[7px] text-slate-500 hover:text-slate-300">
-                                <span className="truncate w-full">{sub.content}</span>
-                            </div>
-                        );
-                    })}
-                </div>
-            )}
-        </div>
-      </div>
-    );
-  };
-
+  // JSX rendering...
   return (
-    <div className="terminal-box font-mono text-sm relative overflow-hidden bg-black/95 border border-[#14F195]/40 shadow-2xl flex flex-col h-[600px]">
-      <div className="flex-none flex items-center justify-between bg-slate-900/90 border-b border-white/10 backdrop-blur-md z-20">
-        <div className="flex h-full">
-            <button onClick={() => setActiveTab("ai-chat")} className={`px-6 py-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === "ai-chat" ? "bg-black text-[#00C2FF] border-r border-white/10 shadow-[inset_0_-2px_0_#00C2FF]" : "text-slate-500 hover:text-slate-300"}`}><Zap size={12} fill={activeTab === "ai-chat" ? "currentColor" : "none"} /> AI CHAT</button>
-            <button onClick={() => setActiveTab("zeroclaw")} className={`px-6 py-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === "zeroclaw" ? "bg-black text-[#14F195] border-r border-white/10 shadow-[inset_0_-2px_0_#14F195]" : "text-slate-500 hover:text-slate-300"}`}><Cpu size={12} /> ZEROCLAW_CORE</button>
-        </div>
-        <div className="flex gap-4 px-6 text-[10px] items-center">
-            {!connected && <div className="flex items-center gap-1 bg-[#9945FF]/20 border border-[#9945FF]/40 px-2 py-0.5 rounded animate-pulse text-[#9945FF] font-bold"><Zap size={10} /> DEVNET DEMO</div>}
-            {sessionActive && activeTab === "ai-chat" && (
-                <div className="flex items-center gap-3 text-slate-400 border-r border-white/10 pr-4">
-                    <span className="flex items-center gap-1.5"><Clock size={10} className="text-[#FF00FF]" /> IDLE: {15 - (idleSeconds % 16)}s</span>
-                    <span className="flex items-center gap-1.5"><Coins size={10} className="text-[#00C2FF]" /> SPENT: {totalSpent.toFixed(4)} USDC</span>
+    <div className={`flex flex-col h-full ${theme.bg} ${theme.text} font-mono text-xs overflow-hidden transition-colors duration-300`}>
+        {/* Header */}
+        <div className={`flex justify-between items-center p-3 border-b ${theme.headerBorder} ${theme.headerBg} shadow-sm z-10`}>
+            <div className="flex items-center space-x-2">
+                <Terminal size={16} className={isDarkMode ? "text-blue-400" : "text-blue-600"} />
+                <span className={`font-bold text-lg tracking-tight ${theme.headerText}`}>ZEROCLAW_TERMINAL_V1</span>
+            </div>
+            <div className="flex items-center space-x-6 text-sm font-medium">
+                <a 
+                    href={`https://explorer.solana.com/address/${connected && publicKey ? publicKey.toBase58() : demoWallet}?cluster=devnet`}
+                    target="_blank"
+                    rel="noopener noreferrer" 
+                    className={`flex items-center space-x-4 hover:bg-blue-50/10 p-2 rounded-md transition-colors cursor-pointer group`}
+                    title="View Wallet on Explorer"
+                >
+                    <div className="flex items-center space-x-2">
+                        <Coins size={14} className="text-yellow-500 group-hover:scale-110 transition-transform" />
+                        <span className={isDarkMode ? "text-blue-200" : "text-slate-700"}>{solBalance.toFixed(4)} SOL</span>
+                    </div>
+                     <div className="flex items-center space-x-1">
+                        <span className="text-blue-500 font-bold">$</span>
+                        <span className={isDarkMode ? "text-blue-200" : "text-slate-700"}>{usdcBalance.toFixed(2)} USDC</span>
+                    </div>
+                </a>
+                <div className="flex items-center space-x-2">
+                    <Activity size={14} className={sessionActive ? "text-green-500 animate-pulse" : "text-gray-400"} />
+                    <span className={sessionActive ? "text-green-500 font-bold" : "text-gray-400"}>{sessionActive ? "UPLINK_ACTIVE" : "STANDBY"}</span>
                 </div>
-            )}
-            <div className="flex items-center gap-1.5 bg-white/5 px-3 py-1 rounded">
-                <div className={`w-1.5 h-1.5 rounded-full ${connected ? "bg-[#14F195] animate-pulse" : "bg-[#9945FF]"}`}></div> 
-                <span className="text-slate-500 uppercase font-bold tracking-tighter">WALLET:</span>
-                <span className="text-white font-black tracking-tight">{solBalance.toFixed(2)} SOL</span>
+                 <button 
+                    onClick={() => setIsDarkMode(!isDarkMode)} 
+                    className={`hover:${theme.text} transition-colors p-1 rounded-full hover:bg-blue-500/10`}
+                    title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+                 >
+                    {isDarkMode ? <Sun size={14}/> : <Moon size={14}/>}
+                 </button>
+                 <button onClick={handleReset} className={`hover:${theme.text} transition-colors p-1`}><RotateCcw size={14}/></button>
             </div>
         </div>
-      </div>
-      <div className="flex-1 flex overflow-hidden relative">
-        <div className="flex-1 flex flex-col border-r border-white/5 relative">
-            <div ref={inferenceScrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
-              {activeTab === "ai-chat" ? ( 
-                inferenceLogs.map((log, i) => ( 
-                    <div key={i} className="flex gap-2">
-                        <span className="text-slate-600 select-none mt-1">{log.startsWith(">") ? "➜" : "◈"}</span>
-                        <div className={log.startsWith(">") ? "text-[#00C2FF] font-bold text-left" : "text-white/90 leading-relaxed text-left prose prose-invert prose-xs max-w-none"}>
-                            {log.startsWith(">") ? (
-                                log.substring(1)
-                            ) : (
-                                <ReactMarkdown components={{
-                                    p: ({node, ...props}) => <p className="mb-2 last:mb-0 text-left" {...props} />,
-                                    ul: ({node, ...props}) => <ul className="list-disc ml-4 mb-2 text-left" {...props} />,
-                                    ol: ({node, ...props}) => <ol className="list-decimal ml-4 mb-2 text-left" {...props} />,
-                                    li: ({node, ...props}) => <li className="mb-1 text-left" {...props} />,
-                                    strong: ({node, ...props}) => <strong className="text-white font-black" {...props} />,
-                                    h1: ({node, ...props}) => <h1 className="text-lg font-black text-[#14F195] mb-2 text-left" {...props} />,
-                                    h2: ({node, ...props}) => <h2 className="text-md font-black text-[#14F195] mb-2 text-left" {...props} />,
-                                    h3: ({node, ...props}) => <h3 className="text-sm font-black text-[#14F195] mb-1 text-left" {...props} />,
-                                }}>{log}</ReactMarkdown>
-                            )}
+
+        {/* Main Content */}
+        <div className="flex flex-1 overflow-hidden relative z-0">
+            {/* Left Panel: Chat/Terminal */}
+            <div className={`flex-1 flex flex-col border-r ${theme.panelBorder} ${theme.panelBg} backdrop-blur-sm`}>
+                 {/* Tabs */}
+                <div className={`flex border-b ${theme.tabBorder}`}>
+                    <button 
+                        onClick={() => setActiveTab("ai-chat")}
+                        className={`flex-1 p-3 text-center font-medium transition-all ${activeTab === "ai-chat" ? theme.tabActive : theme.tabInactive}`}
+                    >
+                        AI_INFERENCE_STREAM
+                    </button>
+                    <button
+                         onClick={() => setActiveTab("zeroclaw")}
+                         className={`flex-1 p-3 text-center font-medium transition-all ${activeTab === "zeroclaw" ? theme.tabActive : theme.tabInactive} relative group`}
+                    >
+                        ZEROCLAW_SYS_CMD
+                        <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-yellow-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-yellow-500"></span>
+                        </span>
+                    </button>
+                </div>
+
+                {/* Output Area */}
+                <div ref={inferenceScrollRef} className={`flex-1 overflow-y-auto p-6 space-y-2 text-sm leading-relaxed ${theme.outputText}`}>
+                    {activeTab === "ai-chat" ? (
+                        inferenceLogs.map((log, i) => (
+                             <div key={i} className="whitespace-pre-wrap break-words">
+                                {log.startsWith(">") ? <span className="text-blue-500 font-bold block mt-4 mb-2">{log}</span> : <div className={`prose prose-sm ${isDarkMode ? "prose-invert prose-p:text-blue-100 prose-strong:text-blue-300" : "prose-blue"} max-w-none`}><ReactMarkdown>{log}</ReactMarkdown></div>}
+                            </div>
+                        ))
+                    ) : (
+                         zeroclawLogs.map((log, i) => (
+                            <div key={i} className="whitespace-pre-wrap break-words font-mono text-xs">{log}</div>
+                        ))
+                    )}
+                </div>
+
+                {/* Input Area */}
+                <form onSubmit={handleCommand} className={`p-4 border-t ${theme.inputBorder} flex items-center ${theme.inputBg} shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)] z-20`}>
+                    <ChevronRight size={18} className="mr-3 text-blue-500 animate-pulse" />
+                    <input 
+                        type="text" 
+                        value={input} 
+                        onChange={(e) => setInput(e.target.value)}
+                        className={`flex-1 bg-transparent outline-none border-none ${theme.inputText} ${theme.inputPlaceholder} text-base h-10 font-medium`}
+                        placeholder={activeTab === "ai-chat" ? "Enter query for sovereign intelligence..." : "Enter system command..."}
+                        autoFocus
+                    />
+                    {isTyping && <Loader2 size={18} className="animate-spin text-blue-500 ml-3" />}
+                </form>
+            </div>
+
+            {/* Right Panel: Ephemeral Rollup Ledger */}
+            <div className={`w-1/3 flex flex-col ${theme.ledgerBg} border-l ${theme.ledgerBorder} shadow-inner`}>
+                 <div className={`p-3 border-b ${theme.ledgerBorder} font-bold flex justify-between items-center ${theme.ledgerHeaderBg} ${theme.ledgerHeaderText}`}>
+                    <span>EPHEMERAL_ROLLUP_LEDGER</span>
+                    <Server size={14} className="text-blue-500"/>
+                </div>
+                <div ref={rollupScrollRef} className="flex-1 overflow-y-auto p-3 space-y-2 text-[11px] font-mono">
+                    {ledgerEntries.map((entry, i) => (
+                        <div key={entry.id} className={`border ${theme.ledgerEntryBorder} p-2 rounded-md ${theme.ledgerEntryBg} shadow-sm hover:shadow-md transition-shadow`}>
+                            <div className="flex items-start">
+                                <span 
+                                    className="mr-2 mt-0.5 text-lg cursor-pointer flex items-center hover:text-blue-400" 
+                                    onClick={() => toggleEntry(entry.id)}
+                                >
+                                    {entry.subEntries && entry.subEntries.length > 0 && (
+                                        <span className="mr-1">
+                                            {entry.isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                                        </span>
+                                    )}
+                                    {entry.type === "tx" ? "📦" : entry.type === "settlement" ? "⚡" : "ℹ️"}
+                                </span>
+                                <div className="flex-1 min-w-0">
+                                    <div className={`break-all ${theme.ledgerEntryText} font-medium`}>
+                                        {entry.content}
+                                        {entry.sig && (
+                                            <a 
+                                                href={`https://explorer.solana.com/tx/${entry.sig}?cluster=devnet`} 
+                                                target="_blank" 
+                                                rel="noopener noreferrer"
+                                                className="ml-2 text-blue-500 underline hover:text-blue-400 text-[10px]"
+                                            >
+                                                [VIEW_TX]
+                                            </a>
+                                        )}
+                                    </div>
+                                    {entry.isExpanded && entry.subEntries && entry.subEntries.length > 0 && (
+                                         <div className={`mt-2 pl-3 border-l-2 ${theme.ledgerBorder} space-y-1.5`}>
+                                            {entry.subEntries.map((sub, j) => (
+                                                <div key={j} className="text-slate-400 truncate flex items-center justify-between">
+                                                    <span>{sub.content}</span>
+                                                    {sub.sig && (
+                                                        <a 
+                                                            href={`https://explorer.magicblock.app/tx/${sub.sig}?cluster=devnet`} 
+                                                            target="_blank" 
+                                                            rel="noopener noreferrer"
+                                                            className="ml-2 text-blue-400 underline hover:text-blue-300 text-[9px] whitespace-nowrap"
+                                                        >
+                                                            [ER_TX]
+                                                        </a>
+                                                    )}
+                                                </div>
+                                            ))}
+                                         </div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    </div> 
-                )) 
-              ) : ( 
-                zeroclawLogs.map((log, i) => ( 
-                    <div key={i} className="flex gap-2">
-                        <span className="text-slate-600 select-none">{log.startsWith(">") ? "➜" : "◈"}</span>
-                        <pre className={`whitespace-pre-wrap ${log.startsWith(">") ? "text-[#14F195] font-bold text-left" : "text-slate-300 text-left"}`}>{log.startsWith(">") ? log.substring(1) : log}</pre>
-                    </div> 
-                )) 
-              )}
-              {isTyping && <div className="flex gap-2 animate-pulse"><span className="text-slate-600 select-none">◈</span><div className="flex gap-1 items-center"><div className="w-1 h-1 bg-[#14F195] rounded-full"></div><div className="w-1 h-1 bg-[#14F195] rounded-full animate-delay-150"></div><div className="w-1 h-1 bg-[#14F195] rounded-full animate-delay-300"></div></div></div>}
-            </div>
-            <form onSubmit={handleCommand} className="p-4 bg-black border-t border-white/5 flex items-center gap-3">
-              <ChevronRight size={14} className="text-[#14F195]" />
-              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder={activeTab === "ai-chat" ? "Input prompt..." : "Enter command..."} className="flex-1 bg-transparent border-none outline-none text-white text-xs font-mono" disabled={isTyping} />
-              <button type="submit" disabled={isTyping} className="bg-[#14F195] hover:bg-[#14F195]/80 text-black px-3 py-1 rounded text-[10px] font-black flex items-center gap-1.5">EXECUTE <Zap size={10} fill="currentColor" /></button>
-            </form>
-        </div>
-        <div className="w-80 flex flex-col bg-black/40 backdrop-blur-sm">
-            <div className="px-4 py-3 border-b border-white/5 flex items-center justify-between"><span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Rollup Ledger</span><div className="flex items-center gap-1.5"><div className="w-1 h-1 bg-[#00C2FF] rounded-full animate-pulse"></div><span className="text-[8px] text-[#00C2FF] font-bold">SYNCED</span></div></div>
-            <div ref={rollupScrollRef} className="flex-1 overflow-y-auto p-4 space-y-3 font-mono text-[9px] scrollbar-hide">
-                {ledgerEntries.map((entry) => ( <div key={entry.id}>{renderEntry(entry)}</div> ))}
-            </div>
-            <div className="p-4 border-t border-white/5 space-y-3 bg-slate-950/50 text-[8px]">
-                <div className="flex justify-between items-center"><span className="text-slate-600 uppercase font-bold">AVG Latency (Session)</span><span className="text-[#14F195] font-black">{averageLatency.toFixed(2)}ms</span></div>
-                <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden"><div className="bg-[#14F195] h-full transition-all duration-300 animate-pulse" style={{ width: `${Math.min(100, (1000/averageLatency) * 5)}%` }}></div></div>
-                <div className="flex justify-between items-center"><span className="text-slate-600 uppercase font-bold">Current Speed</span><span className="text-[#00C2FF] font-black">{realLatency > 0 ? (1000/realLatency).toFixed(0) : "0"} t/s</span></div>
-                <div className="w-full bg-white/5 h-1 rounded-full overflow-hidden"><div className="bg-[#00C2FF] h-full transition-all duration-300" style={{ width: `${Math.min(100, (1000/realLatency) * 2)}%` }}></div></div>
+                    ))}
+                </div>
+                
+                 {/* Stats Footer */}
+                <div className={`p-3 border-t ${theme.statBorder} grid grid-cols-2 gap-3 text-[11px] font-medium ${theme.statBg} ${theme.statText}`}>
+                     <div className="flex justify-between items-center">
+                        <span>LATENCY:</span>
+                        <span className={`px-1.5 py-0.5 rounded ${realLatency < 50 ? "bg-green-100 text-green-700" : "bg-yellow-100 text-yellow-700"}`}>{realLatency.toFixed(1)}ms</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span>TPS (ER):</span>
+                        <span className="text-blue-500">~1000</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span>SESSION COST:</span>
+                        <span className={isDarkMode ? "text-blue-200" : "text-slate-800"}>{totalSpent.toFixed(4)} USDC</span>
+                    </div>
+                     <div className="flex justify-between items-center">
+                        <span>STATUS:</span>
+                        <span className="text-green-500 flex items-center"><span className="w-1.5 h-1.5 bg-green-500 rounded-full mr-1"></span>ONLINE</span>
+                    </div>
+                </div>
             </div>
         </div>
-      </div>
-      <div className="absolute inset-0 pointer-events-none opacity-[0.03] bg-[linear-gradient(rgba(20,241,149,0.1)_1px,transparent_1px),linear-gradient(90deg,rgba(20,241,149,0.1)_1px,transparent_1px)] bg-[size:20px_20px]"></div>
     </div>
   );
 }

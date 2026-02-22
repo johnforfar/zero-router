@@ -156,11 +156,12 @@ export default function LandingPage() {
                 Lightweight infrastructure for modern AI.
               </p>
             </div>
-            <div className="grid md:grid-cols-3 gap-8">
+            <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
               {[
                 { title: "Blazing Fast", desc: "Cold start < 10ms. No containers. Just WASM.", icon: <Zap size={32} />, color: "text-[#14F195]" },
                 { title: "Ultra Light", desc: "3.4MB binary. Runs anywhere. Edge compatible.", icon: <HardDrive size={32} />, color: "text-[#00C2FF]" },
                 { title: "Pluggable", desc: "Trait-based system. Hot-swappable modules.", icon: <Layers size={32} />, color: "text-[#9945FF]" },
+                { title: "Rust Powered", desc: "Built on the metal. Memory safe. Thread safe.", icon: <span className="text-4xl -mt-1 block">🦀</span>, color: "text-[#FF4D00]" },
               ].map((item, i) => (
                 <div key={item.title} className="bg-slate-900/20 border border-white/5 p-10 hover:bg-slate-900/40 transition-colors relative group overflow-hidden rounded-xl">
                   <div className={`mb-6 ${item.color} group-hover:scale-110 transition-transform duration-300`}>

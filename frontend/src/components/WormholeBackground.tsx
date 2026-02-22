@@ -29,7 +29,7 @@ export function WormholeBackground() {
     for (let i = 0; i < lineCount; i++) {
       lines.push({
         angle: (i / lineCount) * Math.PI * 2,
-        speed: 0.002 + Math.random() * 0.004,
+        speed: 0.001 + Math.random() * 0.002, // Slower speed (50%)
         offset: Math.random() * 100
       });
     }
@@ -42,10 +42,10 @@ export function WormholeBackground() {
 
     let time = 0;
     const render = () => {
-      time += 0.01;
+      time += 0.005; // Slower time (50%)
       
-      // Clear with slight alpha for motion blur
-      ctx.fillStyle = "rgba(0, 0, 0, 0.2)";
+      // Clear with less alpha for sharper motion (reduced motion blur)
+      ctx.fillStyle = "rgba(0, 0, 0, 0.5)"; // Increased from 0.2 to 0.5
       ctx.fillRect(0, 0, w, h);
 
       // CENTER SWAY LOGIC
@@ -59,18 +59,18 @@ export function WormholeBackground() {
       // 1. Draw ZOOMING Rings
       rings.forEach((ring, i) => {
         // Grow rings to simulate forward movement
-        ring.r *= 1.02; 
+        ring.r *= 1.01; // Slower growth (50%)
         if (ring.r > maxRadius) {
             ring.r = 10; // Reset to center
         }
 
         // Fade in/out based on distance from center
-        const opacity = Math.min(0.2, (ring.r / maxRadius) * 0.5);
+        const opacity = Math.min(0.8, (ring.r / maxRadius) * 0.8); // Increased opacity
         
         ctx.beginPath();
         ctx.arc(cx, cy, ring.r, 0, Math.PI * 2);
         ctx.strokeStyle = `rgba(0, 194, 255, ${opacity})`;
-        ctx.lineWidth = 1 + (ring.r / maxRadius) * 2;
+        ctx.lineWidth = 2 + (ring.r / maxRadius) * 4; // Thicker lines
         ctx.stroke();
       });
 
@@ -86,14 +86,14 @@ export function WormholeBackground() {
 
         const gradient = ctx.createLinearGradient(x1, y1, x2, y2);
         gradient.addColorStop(0, "rgba(0, 194, 255, 0)");
-        gradient.addColorStop(0.2, "rgba(0, 194, 255, 0.1)");
+        gradient.addColorStop(0.2, "rgba(0, 194, 255, 0.4)"); // Increased opacity
         gradient.addColorStop(1, "rgba(0, 194, 255, 0)");
 
         ctx.beginPath();
         ctx.moveTo(x1, y1);
         ctx.lineTo(x2, y2);
         ctx.strokeStyle = gradient;
-        ctx.lineWidth = 0.5;
+        ctx.lineWidth = 1.5; // Thicker lines
         ctx.stroke();
       });
 

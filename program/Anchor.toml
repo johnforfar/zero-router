@@ -7,17 +7,17 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-zerorouter = "9rcfA9NmU5mJnvpcCnKNsmSTorCGDXmGnQFB63mdXDdK"
+zerorouter = "scr8KCMrUgArFL7bamxFccwbYhxRv4qpWb1auhomeSE"
 
 [programs.localnet]
-zerorouter = "9rcfA9NmU5mJnvpcCnKNsmSTorCGDXmGnQFB63mdXDdK"
+zerorouter = "scr8KCMrUgArFL7bamxFccwbYhxRv4qpWb1auhomeSE"
 
 [registry]
 url = "https://api.apr.dev"
 
 [provider]
 cluster = "devnet"
-wallet = "~/.config/solana/id.json"
+wallet = "deploy-wallet.json"
 
 [scripts]
 test = "yarn run mocha -t 1000000 tests/"
