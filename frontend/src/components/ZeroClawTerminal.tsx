@@ -102,9 +102,9 @@ export function ZeroClawTerminal() {
     statBorder: "border-blue-100"
   };
   
+  const [selectedModel, setSelectedModel] = useState("gemini-2.0-flash");
   const [inferenceLogs, setInferenceLogs] = useState<string[]>([
     "--- ZeroRouter v1.0.0 (Sovereign API) ---",
-    "Linking: Google DeepMind Grid (Gemini 2 Flash)",
     "Status: READY. Ephemeral Rollup standby."
   ]);
   
@@ -359,7 +359,7 @@ export function ZeroClawTerminal() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-              model: "gemini-2.0-flash",
+              model: selectedModel,
               messages: [{ role: "user", content: cmd }]
           })
       });
@@ -477,10 +477,23 @@ export function ZeroClawTerminal() {
                 <span className={`font-bold text-lg tracking-tight ${theme.headerText}`}>ZEROCLAW_TERMINAL_V1</span>
             </div>
             <div className="flex items-center space-x-6 text-sm font-medium">
-                <a 
+                <div className="flex items-center gap-2 mr-2">
+                    <div className="relative">
+                        <select
+                            value={selectedModel}
+                            onChange={(e) => setSelectedModel(e.target.value)}
+                            className={`appearance-none bg-slate-900/50 border ${theme.statBorder} ${theme.statText} text-[10px] font-bold px-3 py-1 rounded-full outline-none hover:border-blue-500 transition-all cursor-pointer pr-6`}
+                        >
+                            <option value="gemini-2.0-flash">Gemini 2 Flash</option>
+                            <option value="ollama-llama3.2" disabled>Ollama Llama3.2 (coming soon)</option>
+                        </select>
+                        <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-blue-500" />
+                    </div>
+                </div>
+                <a
                     href={`https://explorer.solana.com/address/${connected && publicKey ? publicKey.toBase58() : demoWallet}?cluster=devnet`}
                     target="_blank"
-                    rel="noopener noreferrer" 
+                    rel="noopener noreferrer"
                     className={`flex items-center space-x-4 hover:bg-blue-50/10 p-2 rounded-md transition-colors cursor-pointer group`}
                     title="View Wallet on Explorer"
                 >

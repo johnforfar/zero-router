@@ -7,10 +7,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-zerorouter = "scr8KCMrUgArFL7bamxFccwbYhxRv4qpWb1auhomeSE"
+zerorouter = "8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z"
 
 [programs.localnet]
-zerorouter = "scr8KCMrUgArFL7bamxFccwbYhxRv4qpWb1auhomeSE"
+zerorouter = "8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z"
 
 [registry]
 url = "https://api.apr.dev"

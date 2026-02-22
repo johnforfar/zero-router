@@ -8,14 +8,14 @@ import {
     DELEGATION_PROGRAM_ID,
   } from "@magicblock-labs/ephemeral-rollups-sdk";
 
-export const PAYSTREAM_PROGRAM_ID = new PublicKey(process.env.NEXT_PUBLIC_PROGRAM_ID || "scr8KCMrUgArFL7bamxFccwbYhxRv4qpWb1auhomeSE");
+export const PAYSTREAM_PROGRAM_ID = new PublicKey(process.env.NEXT_PUBLIC_PROGRAM_ID || "8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z");
 export const USDC_DEVNET = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
 
 // ZeroRouter IDL Definition (Matches Anchor 0.30+)
 const IDL: any = {
-  "address": process.env.NEXT_PUBLIC_PROGRAM_ID || "scr8KCMrUgArFL7bamxFccwbYhxRv4qpWb1auhomeSE",
+  "address": process.env.NEXT_PUBLIC_PROGRAM_ID || "8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z",
   "metadata": {
-      "address": process.env.NEXT_PUBLIC_PROGRAM_ID || "scr8KCMrUgArFL7bamxFccwbYhxRv4qpWb1auhomeSE",
+      "address": process.env.NEXT_PUBLIC_PROGRAM_ID || "8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z",
       "name": "zerorouter",
       "version": "0.1.0",
       "spec": "0.1.0"

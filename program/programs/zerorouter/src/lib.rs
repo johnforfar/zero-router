@@ -2,7 +2,7 @@ use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint};
 use ephemeral_rollups_sdk::anchor::ephemeral;
 
-declare_id!("scr8KCMrUgArFL7bamxFccwbYhxRv4qpWb1auhomeSE");
+declare_id!("8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z");
 
 #[ephemeral]
 #[program]
