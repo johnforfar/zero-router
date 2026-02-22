@@ -10,7 +10,7 @@ declare_id!("8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z");
 pub mod zerorouter {
     use super::*;
 
-    pub fn initialize_session(ctx: Context<InitializeStream>, rate: u64, amount: u64) -> Result<()> {
+    pub fn initialize_stream(ctx: Context<InitializeStream>, rate: u64, amount: u64) -> Result<()> {
         let session = &mut ctx.accounts.session;
         session.payer = ctx.accounts.payer.key();
         session.provider = ctx.accounts.provider.key();
@@ -33,34 +33,31 @@ pub mod zerorouter {
         Ok(())
     }
 
-    pub fn record_usage(ctx: Context<Tick>) -> Result<()> {
+    pub fn tick(ctx: Context<Tick>, token_count: u64) -> Result<()> {
         let session = &mut ctx.accounts.session;
         require!(session.is_active, ZeroRouterError::StreamInactive);
 
-        // Virtual Accounting Check
+        let cost = token_count * session.rate;
         require!(
-            session.accumulated_amount + session.rate <= session.total_deposited,
+            session.accumulated_amount + cost <= session.total_deposited,
             ZeroRouterError::InsufficientFunds
         );
 
-        // Update State (On ER)
-        session.accumulated_amount += session.rate;
-        
+        session.accumulated_amount += cost;
         Ok(())
     }
 
-    pub fn close_session(ctx: Context<CloseStream>) -> Result<()> {
+    pub fn close_stream(ctx: Context<CloseStream>) -> Result<()> {
         let session = &ctx.accounts.session;
         
         let seeds = &[
-            b"session_v1",
+            b"session_v2",
             session.payer.as_ref(),
             session.provider.as_ref(),
             &[session.bump],
         ];
         let signer = &[&seeds[..]];
 
-        // 1. Pay Provider (Accumulated Amount)
         if session.accumulated_amount > 0 {
             let transfer_host_ctx = CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -74,9 +71,7 @@ pub mod zerorouter {
             token::transfer(transfer_host_ctx, session.accumulated_amount)?;
         }
 
-        // 2. Refund Payer (Remaining)
         let remaining = ctx.accounts.vault.amount; 
-        
         if remaining > 0 {
             let transfer_payer_ctx = CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -97,9 +92,8 @@ pub mod zerorouter {
         let payer_key = ctx.accounts.payer.key();
         let provider_key = ctx.accounts.provider.key();
 
-        // Construct BASE seeds (NO BUMP)
         let seeds: &[&[u8]] = &[
-            b"session_v1",
+            b"session_v2",
             payer_key.as_ref(),
             provider_key.as_ref(),
         ];
@@ -120,13 +114,13 @@ pub struct InitializeStream<'info> {
         init_if_needed,
         payer = payer,
         space = 8 + 32 + 32 + 8 + 1 + 1 + 8 + 8,
-        seeds = [b"session_v1", payer.key().as_ref(), provider.key().as_ref()],
+        seeds = [b"session_v2", payer.key().as_ref(), provider.key().as_ref()],
         bump
     )]
     pub session: Account<'info, SessionAccount>,
     
     #[account(
-        init,
+        init_if_needed,
         payer = payer,
         token::mint = mint,
         token::authority = session,
@@ -153,7 +147,7 @@ pub struct InitializeStream<'info> {
 pub struct Tick<'info> {
     #[account(
         mut,
-        seeds = [b"session_v1", session.payer.as_ref(), session.provider.as_ref()],
+        seeds = [b"session_v2", session.payer.as_ref(), session.provider.as_ref()],
         bump = session.bump
     )]
     pub session: Account<'info, SessionAccount>,
@@ -164,7 +158,7 @@ pub struct CloseStream<'info> {
     #[account(
         mut,
         close = payer,
-        seeds = [b"session_v1", session.payer.as_ref(), session.provider.as_ref()],
+        seeds = [b"session_v2", session.payer.as_ref(), session.provider.as_ref()],
         bump = session.bump
     )]
     pub session: Account<'info, SessionAccount>,
@@ -192,19 +186,18 @@ pub struct CloseStream<'info> {
 #[derive(Accounts)]
 pub struct DelegateInput<'info> {
     pub payer: Signer<'info>,
-    
-    #[account(
-        mut,
-        seeds = [b"session_v1", payer.key().as_ref(), provider.key().as_ref()],
-        bump = pda.bump,
-        del
-    )]
-    pub pda: Account<'info, SessionAccount>,
-    
     /// CHECK: Provider used for seed verification
     pub provider: UncheckedAccount<'info>,
-    
-    pub system_program: Program<'info, System>,
+    /// CHECK: The account to be delegated (bypass Anchor deserialization check)
+    #[account(
+        mut,
+        seeds = [b"session_v2", payer.key().as_ref(), provider.key().as_ref()],
+        bump,
+        del
+    )]
+    pub pda: AccountInfo<'info>,
+    /// CHECK: System program
+    pub system_program: AccountInfo<'info>,
 }
 
 #[account]

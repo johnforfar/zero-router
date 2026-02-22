@@ -104,9 +104,9 @@ export function ZeroClawTerminal() {
   };
   
   const [selectedModel, setSelectedModel] = useState("gemini-2.0-flash");
-  const [inferenceLogs, setInferenceLogs] = useState<string[]>([
-    "--- ZeroRouter v1.0.0 (Sovereign API) ---",
-    "Status: READY. Ephemeral Rollup standby."
+  const [inferenceLogs, setInferenceLogs] = useState<{type: "status" | "user" | "assistant", content: string}[]>([
+    { type: "status", content: "--- ZeroRouter v1.0.0 (Sovereign API) ---" },
+    { type: "status", content: "Status: READY. Ephemeral Rollup standby." }
   ]);
   
   const [ledgerEntries, setLedgerEntries] = useState<LedgerEntry[]>([
@@ -257,7 +257,7 @@ export function ZeroClawTerminal() {
         console.error("PayStreamClient not ready");
         return;
     }
-    setInferenceLogs(prev => [...prev, "🚀 INITIALIZING SOVEREIGN AI SESSION..."]);
+    setInferenceLogs(prev => [...prev, { type: "status", content: "🚀 INITIALIZING SOVEREIGN AI SESSION..." }]);
     addLedgerEntry("info", `🔗 [L1] CREATING SESSION & DEPOSITING USDC...`);
     
     try {
@@ -381,7 +381,7 @@ export function ZeroClawTerminal() {
         return;
     }
 
-    setInferenceLogs(prev => [...prev, `> ${cmd}`]);
+    setInferenceLogs(prev => [...prev, { type: "user", content: cmd }]);
     setInput("");
     setIsTyping(true);
     setIdleSeconds(0);
@@ -401,7 +401,7 @@ export function ZeroClawTerminal() {
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let inferenceText = "";
-      setInferenceLogs(prev => [...prev, ""]);
+      setInferenceLogs(prev => [...prev, { type: "assistant", content: "" }]);
       
       let currentUsdc = usdcBalance;
       let tokenCount = 0;
@@ -417,7 +417,11 @@ export function ZeroClawTerminal() {
                   if (data.choices && data.choices[0].delta.content) {
                       const content = data.choices[0].delta.content;
                       inferenceText += content;
-                      setInferenceLogs(prev => { const n = [...prev]; n[n.length - 1] = inferenceText; return n; });
+                      setInferenceLogs(prev => {
+                          const n = [...prev];
+                          n[n.length - 1] = { type: "assistant", content: inferenceText };
+                          return n;
+                      });
                       
                       const t0 = performance.now();
                       currentUsdc -= COST_PER_TOKEN_USDC;
@@ -453,9 +457,9 @@ export function ZeroClawTerminal() {
           }
       }
       await finalizeLedgerBatch(tokenCount);
-      setInferenceLogs(prev => [...prev, "✅ TOKEN STREAM COMPLETE. SETTLEMENT FINALIZED."]);
+      setInferenceLogs(prev => [...prev, { type: "status", content: "✅ TOKEN STREAM COMPLETE. SETTLEMENT FINALIZED." }]);
     } catch (err) {
-      setInferenceLogs(prev => [...prev, "ERR: Gateway connection failed."]);
+      setInferenceLogs(prev => [...prev, { type: "status", content: "ERR: Gateway connection failed." }]);
     } finally {
       setIsTyping(false);
     }
@@ -479,7 +483,7 @@ export function ZeroClawTerminal() {
   const handleReset = async () => {
     if (isResetting) return;
     setIsResetting(true);
-    setInferenceLogs(prev => [...prev, "♻️ RESETTING PROTOCOL STATE..."]);
+    setInferenceLogs(prev => [...prev, { type: "status", content: "♻️ RESETTING PROTOCOL STATE..." }]);
     setTimeout(() => { window.location.reload(); }, 1000);
   };
 
@@ -582,11 +586,27 @@ export function ZeroClawTerminal() {
                 {/* Output Area */}
                 <div ref={inferenceScrollRef} className={`flex-1 overflow-y-auto p-6 space-y-2 text-sm leading-relaxed ${theme.outputText}`}>
                     {activeTab === "ai-chat" ? (
-                        inferenceLogs.map((log, i) => (
-                             <div key={i} className="whitespace-pre-wrap break-words">
-                                {log.startsWith(">") ? <span className="text-blue-500 font-bold block mt-4 mb-2">{log}</span> : <div className={`prose prose-sm ${isDarkMode ? "prose-invert prose-p:text-blue-100 prose-strong:text-blue-300" : "prose-blue"} max-w-none`}><ReactMarkdown>{log}</ReactMarkdown></div>}
-                            </div>
-                        ))
+                        <div className="flex flex-col space-y-4">
+                            {inferenceLogs.map((log, i) => (
+                                <div key={i} className={`flex ${log.type === 'user' ? 'justify-end' : 'justify-start'}`}>
+                                    {log.type === 'status' ? (
+                                        <div className="w-full text-center text-[10px] text-blue-500/60 font-bold tracking-widest uppercase py-2 border-y border-blue-900/20 my-2">
+                                            {log.content}
+                                        </div>
+                                    ) : (
+                                        <div className={`max-w-[85%] rounded-2xl px-4 py-3 shadow-sm ${
+                                            log.type === 'user'
+                                                ? 'bg-blue-600 text-white rounded-tr-none border border-blue-500'
+                                                : 'bg-slate-900 text-blue-50 rounded-tl-none border border-blue-800/50'
+                                        }`}>
+                                            <div className={`prose prose-sm ${log.type === 'user' ? 'prose-invert' : (isDarkMode ? "prose-invert prose-p:text-blue-100 prose-strong:text-blue-300" : "prose-blue")} max-w-none`}>
+                                                <ReactMarkdown>{log.content}</ReactMarkdown>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
                     ) : (
                          <div className="flex flex-col items-center justify-center h-full space-y-4 opacity-50">
                             <Cpu size={48} className="text-blue-500 animate-pulse" />
