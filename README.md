@@ -15,11 +15,11 @@ Autonomous agents should not be throttled by credit card limits or monthly subsc
 - **ZeroRouter**: 100% Decentralized. You pay exactly what you burn, settled in real-time on-chain. No deposits held by a centralized entity.
 
 ### 2. Technical Execution: The Ultimate MagicBlock Showcase
-- **Ephemeral Rollups (ER)**: We utilize ER for the most demanding use case—**token streaming.** Every single token processed is recorded on an ER tick (Gasless), providing the throughput of a centralized server with the security of a blockchain.
+- **Ephemeral Rollups (ER)**: We utilize ER for the most demanding use case—**token streaming.** Every single token is settled 1:1 gaslessly, providing the throughput of a centralized server with the security of a blockchain.
 - **Zero-Friction UX**: A true "Pay-as-you-Inference" experience where the user (or agent) never has to sign 1000 transactions manually. The ER handles the delegation, providing sub-millisecond accounting.
 
 ### 3. Performance & Security
-- **Sovereign Rust Core**: Built from scratch using Axum and Tokio for <10ms response times.
+- **Sovereign Rust Core 🦀**: Built 100% in Rust (using Axum and Tokio) for <10ms response times and maximum memory safety—aligning with the ZeroClaw philosophy.
 - **Minimal Footprint**: Gateway runs in a SCRATCH-based Docker image for a near-zero attack surface.
 
 ## 🏗️ System Architecture

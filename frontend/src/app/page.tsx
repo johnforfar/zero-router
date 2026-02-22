@@ -7,6 +7,7 @@ import { Console } from "@/components/Console";
 import { ZeroClawTerminal } from "@/components/ZeroClawTerminal";
 import { WalletStatus } from "@/components/WalletStatus";
 import { DocsModal } from "@/components/DocsModal";
+import { WormholeBackground } from "@/components/WormholeBackground";
 
 export default function LandingPage() {
   const [isDocsOpen, setIsDocsOpen] = useState(false);
@@ -15,11 +16,14 @@ export default function LandingPage() {
     <div className="min-h-screen bg-black text-slate-200 font-sans selection:bg-[#00C2FF]/30 overflow-x-hidden relative">
       <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />
       
+      {/* Animated Wormhole Background */}
+      <WormholeBackground />
+
       {/* Scanlines Overlay */}
       <div className="scanlines"></div>
       
-      {/* Background Grid */}
-      <div className="fixed inset-0 z-0 pointer-events-none opacity-20 retro-grid"></div>
+      {/* Background Grid (Secondary Layer) */}
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-10 retro-grid"></div>
 
       {/* Header */}
       <header className="fixed w-full z-50 top-0 border-b border-white/5 bg-black/50 backdrop-blur-md transition-all duration-300">
@@ -66,7 +70,7 @@ export default function LandingPage() {
           
           {/* Title */}
           <h1 className="hero-title text-white mb-8 mx-auto max-w-5xl text-6xl md:text-8xl lg:text-[120px] font-black uppercase tracking-tighter leading-[0.85]">
-            AI Inference <br/> 
+            AI &nbsp; Inference <br/> 
             <span className="text-slate-500 text-4xl md:text-6xl block my-4 lowercase italic font-light tracking-normal">at the</span>
             <span className="text-gradient-solana block mt-2 tracking-widest">Speed of Light</span>
           </h1>
@@ -76,7 +80,7 @@ export default function LandingPage() {
             True per-token settlement on <span className="text-white font-bold border-b-2 border-[#14F195]">Solana Ephemeral Rollups</span>. <br/>
             High-frequency AI utility for the sovereign agent.
           </p>
-
+          
           {/* Buttons */}
           <div className="flex flex-col md:flex-row gap-6 justify-center items-center mb-32">
             <button onClick={() => setIsDocsOpen(true)} className="btn-primary group px-8 py-4 bg-[#14F195] text-black font-black uppercase tracking-widest rounded-lg flex items-center gap-2 hover:shadow-[0_0_30px_rgba(20,241,149,0.4)] transition-all">

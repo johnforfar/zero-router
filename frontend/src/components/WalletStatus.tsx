@@ -20,12 +20,9 @@ export function WalletStatus() {
         if (!displayAddress) return;
         try {
             const pubkey = new PublicKey(displayAddress);
-            
-            // 1. Fetch SOL
             const balance = await connection.getBalance(pubkey);
             setSolBalance(balance / LAMPORTS_PER_SOL);
             
-            // 2. Fetch USDC (Devnet Mint)
             const USDC_MINT = new PublicKey("4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU");
             const tokenAccounts = await connection.getParsedTokenAccountsByOwner(pubkey, { mint: USDC_MINT });
             
@@ -35,14 +32,24 @@ export function WalletStatus() {
             } else {
                 setUsdcBalance(0);
             }
-        } catch (e) {
-            // Silently fail for 429s/network noise
-        }
+        } catch (e) {}
     };
 
     fetchBalances();
-    const id = setInterval(fetchBalances, 10000);
-    return () => clearInterval(id);
+    
+    // Listen for global balance updates from the Terminal
+    const handleBalanceUpdate = (e: any) => {
+        if (e.detail.sol !== undefined) setSolBalance(e.detail.sol);
+        if (e.detail.usdc !== undefined) setUsdcBalance(e.detail.usdc);
+    };
+    
+    window.addEventListener("balance-update", handleBalanceUpdate);
+    const id = setInterval(fetchBalances, 30000); // Slower polling since we have events
+    
+    return () => {
+        window.removeEventListener("balance-update", handleBalanceUpdate);
+        clearInterval(id);
+    };
   }, [displayAddress, connection]);
 
   return (

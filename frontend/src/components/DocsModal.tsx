@@ -36,7 +36,7 @@ export function DocsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
               </div>
               <div className="p-4 bg-white/5 border border-white/10 rounded-lg">
                 <span className="text-white font-bold block mb-1">ER Performance</span>
-                <p className="text-xs text-slate-400">We leverage MagicBlock Ephemeral Rollups for real-time accounting. Every 5 tokens are settled gaslessly, providing sub-millisecond finality.</p>
+                <p className="text-xs text-slate-400">We leverage MagicBlock Ephemeral Rollups for real-time accounting. Every single token is settled 1:1 gaslessly, providing sub-millisecond finality.</p>
               </div>
             </div>
           </section>
@@ -52,7 +52,7 @@ export function DocsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
          |
     ( NEXT.JS DASHBOARD ) ----> [ MAGICBLOCK ER ]
          |                         |
-    ( CLOUD GATEWAY: RUST ) <---- [ SETTLEMENT TICK ]
+    ( CLOUD GATEWAY: RUST ) <---- [ 1:1 SETTLEMENT ]
          |
     ( INFERENCE NODE: GCE )`}
             </div>
@@ -87,7 +87,7 @@ export function DocsModal({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
           <span>© 2026 ZeroRouter Protocol</span>
           <div className="flex items-center gap-2">
             <div className="w-1.5 h-1.5 bg-[#14F195] rounded-full animate-pulse"></div>
-            <span>Devnet Mainnet Active</span>
+            <span>Devnet Active</span>
           </div>
         </div>
 
