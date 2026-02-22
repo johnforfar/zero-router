@@ -11,7 +11,7 @@ export function WalletStatus() {
   const [solBalance, setSolBalance] = useState(0);
   const [usdcBalance, setUsdcBalance] = useState(0);
   
-  const DEMO_WALLET = process.env.NEXT_PUBLIC_DEMO_WALLET;
+  const DEMO_WALLET = process.env.NEXT_PUBLIC_DEMO_WALLET!;
   const displayAddress = connected ? publicKey?.toBase58() : DEMO_WALLET;
   const shortAddress = displayAddress ? `${displayAddress.substring(0, 8)}...${displayAddress.substring(displayAddress.length - 4)}` : "None";
 
