@@ -41,7 +41,11 @@ jobs:
       # Build & Push Frontend
       - name: Build Frontend
         run: |
-          docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} ./ZeroRouter/frontend
+          docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --build-arg "NEXT_PUBLIC_ZEROROUTER_API_URL=${{ secrets.NEXT_PUBLIC_ZEROROUTER_API_URL }}" \
+            --build-arg "NEXT_PUBLIC_DEMO_WALLET=${{ secrets.NEXT_PUBLIC_DEMO_WALLET }}" \
+            --build-arg "NEXT_PUBLIC_PROGRAM_ID=${{ secrets.NEXT_PUBLIC_PROGRAM_ID }}" \
+            ./ZeroRouter/frontend
           docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
 
       # Deploy to Cloud Run
