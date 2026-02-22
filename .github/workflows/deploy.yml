@@ -1,0 +1,64 @@
+name: ZeroRouter Cloud CI/CD
+
+on:
+  push:
+    branches: [ main ]
+
+env:
+  PROJECT_ID: xnode-ai
+  REGION: us-central1
+  GAR_LOCATION: us-central1
+  REPOSITORY: zerorouter
+  FRONTEND_IMAGE: frontend
+  GATEWAY_IMAGE: gateway
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Google Auth
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GCP_SA_KEY }}'
+
+      - name: Set up Cloud SDK
+        uses: 'google-github-actions/setup-gcloud@v2'
+
+      - name: Docker Auth
+        run: gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev
+
+      # Build & Push Gateway
+      - name: Build Gateway
+        run: |
+          # Copy dependencies into gateway folder as per local optimization
+          cp -r ../openx-2026/REFERENCES/zeroclaw ./ZeroRouter/gateway/zeroclaw_src
+          docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GATEWAY_IMAGE }}:${{ github.sha }} ./ZeroRouter/gateway
+          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GATEWAY_IMAGE }}:${{ github.sha }}
+
+      # Build & Push Frontend
+      - name: Build Frontend
+        run: |
+          docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} ./ZeroRouter/frontend
+          docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+
+      # Deploy to Cloud Run
+      - name: Deploy Gateway
+        run: |
+          gcloud run deploy zerorouter-gateway \
+            --image ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.GATEWAY_IMAGE }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "OLLAMA_URL=http://INTERNAL_GCE_IP:11434"
+
+      - name: Deploy Frontend
+        run: |
+          gcloud run deploy zerorouter-frontend \
+            --image ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.FRONTEND_IMAGE }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --set-env-vars "NEXT_PUBLIC_ZEROROUTER_API_URL=https://GATEWAY_URL"

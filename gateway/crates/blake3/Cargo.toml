@@ -1,0 +1,13 @@
+[package]
+name = "blake3"
+version = "1.8.3"
+edition = "2021"
+
+[features]
+default = ["std", "digest"]
+std = []
+digest = []
+
+[lib]
+name = "blake3"
+path = "src/lib.rs"

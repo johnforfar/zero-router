@@ -1,0 +1,13 @@
+[package]
+name = "base64ct"
+version = "1.8.3"
+edition = "2021"
+
+[features]
+default = ["std"]
+std = []
+alloc = []
+
+[lib]
+name = "base64ct"
+path = "src/lib.rs"

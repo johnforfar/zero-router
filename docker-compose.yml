@@ -1,0 +1,55 @@
+services:
+  # --- Shared Intelligence Grid Infrastructure ---
+  
+  # Shared Inference Node (Ollama)
+  ollama-backend:
+    image: ollama/ollama:latest
+    container_name: zerorouter-ollama
+    # No ports exposed to host to avoid conflicts with native Ollama
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - zerorouter-internal
+    restart: always
+
+  # --- ZeroClaw Implementation Instances ---
+
+  # Sovereign Gateway (Rust)
+  # This container now includes the REAL zeroclaw binary
+  gateway-main:
+    build: 
+      context: ./gateway
+      dockerfile: Dockerfile
+    container_name: zerorouter-gateway
+    restart: always
+    environment:
+      - OLLAMA_URL=http://ollama-backend:11434
+      - MODEL_NAME=llama3.2:1b
+    networks:
+      - zerorouter-internal
+    ports:
+      - "8080:8080"
+
+  # Frontend Application (Next.js)
+  frontend-main:
+    build: ./frontend
+    container_name: zerorouter-frontend
+    ports:
+      - "3000:3000"
+    restart: always
+    environment:
+      - NEXT_PUBLIC_ZEROROUTER_API_URL=http://localhost:8080
+    networks:
+      - zerorouter-internal
+      - zerorouter-public
+    depends_on:
+      - gateway-main
+
+networks:
+  zerorouter-internal:
+    internal: true
+  zerorouter-public:
+    driver: bridge
+
+volumes:
+  ollama_data:

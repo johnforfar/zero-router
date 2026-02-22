@@ -1,0 +1,255 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: #050505;
+  --color-foreground: #e2e8f0;
+  --color-solana-green: #14F195;
+  --color-solana-purple: #9945FF;
+  --color-solana-cyan: #00C2FF;
+  --color-retro-pink: #FF00FF;
+  --color-retro-lime: #CCFF00;
+
+  --font-mono: var(--font-geist-mono), monospace;
+  --font-sans: var(--font-geist-sans), sans-serif;
+  --font-display: var(--font-geist-sans), sans-serif;
+
+  --animate-pulse-slow: pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-scanline: scanline 8s linear infinite;
+  --animate-glow: glow 2s ease-in-out infinite alternate;
+
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+  @keyframes scanline {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100%); }
+  }
+  @keyframes glow {
+    from { box-shadow: 0 0 10px #00C2FF, 0 0 20px #00C2FF; }
+    to { box-shadow: 0 0 20px #00C2FF, 0 0 30px #00C2FF; }
+  }
+
+  --background-image-grid-pattern: linear-gradient(rgba(0, 194, 255, 0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 194, 255, 0.05) 1px, transparent 1px);
+  --background-image-gradient-radial: radial-gradient(var(--tw-gradient-stops));
+
+  --animate-gradient: gradient 3s linear infinite;
+}
+
+@layer base {
+  :root {
+    --background: #020617;
+    --foreground: #f8fafc;
+    --font-geist-sans: "Inter", ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    --font-geist-mono: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: var(--font-geist-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #000;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #14F195;
+    border-radius: 0px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #9945FF;
+  }
+}
+
+@layer components {
+  .hero-title {
+    @apply text-5xl font-black leading-[0.85] tracking-tighter uppercase relative z-10;
+    text-shadow: 0 0 40px rgba(0, 194, 255, 0.3);
+  }
+  @media (min-width: 640px) {
+    .hero-title {
+      @apply text-7xl;
+    }
+  }
+  @media (min-width: 768px) {
+    .hero-title {
+      @apply text-8xl;
+    }
+  }
+  @media (min-width: 1024px) {
+    .hero-title {
+      font-size: 7rem;
+    }
+  }
+  @media (min-width: 1280px) {
+    .hero-title {
+      font-size: 9rem;
+    }
+  }
+  
+  .glass-card {
+    @apply bg-slate-900/60 backdrop-blur-xl border border-white/10 rounded-xl shadow-xl transition-all duration-300 relative overflow-hidden;
+  }
+  
+  .glass-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+    transition: 0.5s;
+  }
+  
+  .glass-card:hover::before {
+    left: 100%;
+  }
+
+  .glass-card:hover {
+    border-color: rgba(0, 194, 255, 0.5);
+    @apply shadow-[0_0_30px_-10px_rgba(0,194,255,0.3)] -translate-y-1;
+  }
+
+  .retro-grid {
+    background-size: 40px 40px;
+    background-image:
+      linear-gradient(to right, rgba(20, 241, 149, 0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(20, 241, 149, 0.05) 1px, transparent 1px);
+    mask-image: linear-gradient(to bottom, black 40%, transparent 100%);
+  }
+
+  .scanlines {
+    background: linear-gradient(
+      to bottom,
+      rgba(255,255,255,0),
+      rgba(255,255,255,0) 50%,
+      rgba(0,0,0,0.2) 50%,
+      rgba(0,0,0,0.2)
+    );
+    background-size: 100% 4px;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    pointer-events: none;
+    z-index: 50;
+    opacity: 0.15;
+  }
+
+  .terminal-box {
+    @apply bg-black/90 backdrop-blur-md rounded-lg overflow-hidden shadow-[0_0_50px_-20px_rgba(20,241,149,0.2)];
+    border: 1px solid rgba(20, 241, 149, 0.3);
+  }
+  
+  .btn-primary {
+    background-color: #00C2FF;
+    color: black;
+    @apply px-8 py-3 rounded-none font-black text-sm hover:bg-white transition-all flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(255,255,255,0.2)] hover:shadow-[2px_2px_0px_0px_rgba(255,255,255,1)] hover:translate-x-[2px] hover:translate-y-[2px] uppercase tracking-widest border border-transparent;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent border px-8 py-3 rounded-none font-black text-sm transition-all flex items-center gap-2 shadow-[4px_4px_0px_0px_rgba(20,241,149,0.2)] hover:shadow-[2px_2px_0px_0px_rgba(20,241,149,1)] hover:translate-x-[2px] hover:translate-y-[2px] uppercase tracking-widest;
+    color: #14F195;
+    border-color: #14F195;
+  }
+
+  .btn-secondary:hover {
+    background-color: #14F195;
+    color: black;
+  }
+}
+
+@layer utilities {
+  .text-gradient-solana {
+    @apply text-transparent bg-clip-text bg-gradient-to-r animate-gradient;
+    background-image: linear-gradient(to right, #14F195, #00C2FF, #9945FF);
+  }
+  
+  .animate-gradient {
+    background-size: 200% 200%;
+    animation: gradient 3s linear infinite;
+  }
+  
+  .glitch {
+    position: relative;
+  }
+  
+  .glitch::before,
+  .glitch::after {
+    content: attr(data-text);
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+  }
+  
+  .glitch::before {
+    left: 2px;
+    text-shadow: -1px 0 #ff00c1;
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim 5s infinite linear alternate-reverse;
+  }
+  
+  .glitch::after {
+    left: -2px;
+    text-shadow: -1px 0 #00fff9;
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim2 5s infinite linear alternate-reverse;
+  }
+}
+
+@keyframes gradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes glitch-anim {
+  0% { clip: rect(31px, 9999px, 94px, 0); }
+  4.166666667% { clip: rect(70px, 9999px, 19px, 0); }
+  8.333333333% { clip: rect(6px, 9999px, 13px, 0); }
+  12.5% { clip: rect(66px, 9999px, 15px, 0); }
+  16.66666667% { clip: rect(10px, 9999px, 86px, 0); }
+  20.83333333% { clip: rect(47px, 9999px, 4px, 0); }
+  25% { clip: rect(54px, 9999px, 89px, 0); }
+  29.16666667% { clip: rect(21px, 9999px, 55px, 0); }
+  33.33333333% { clip: rect(78px, 9999px, 60px, 0); }
+  37.5% { clip: rect(27px, 9999px, 34px, 0); }
+  41.66666667% { clip: rect(27px, 9999px, 6px, 0); }
+  45.83333333% { clip: rect(64px, 9999px, 53px, 0); }
+  50% { clip: rect(31px, 9999px, 54px, 0); }
+  54.16666667% { clip: rect(48px, 9999px, 47px, 0); }
+  58.33333333% { clip: rect(3px, 9999px, 36px, 0); }
+  62.5% { clip: rect(63px, 9999px, 20px, 0); }
+  66.66666667% { clip: rect(57px, 9999px, 73px, 0); }
+  70.83333333% { clip: rect(33px, 9999px, 87px, 0); }
+  75% { clip: rect(68px, 9999px, 46px, 0); }
+  79.16666667% { clip: rect(72px, 9999px, 4px, 0); }
+  83.33333333% { clip: rect(89px, 9999px, 40px, 0); }
+  87.5% { clip: rect(42px, 9999px, 91px, 0); }
+  91.66666667% { clip: rect(17px, 9999px, 8px, 0); }
+  95.83333333% { clip: rect(59px, 9999px, 53px, 0); }
+  100% { clip: rect(98px, 9999px, 87px, 0); }
+}
+
+@keyframes glitch-anim2 {
+  0% { clip: rect(65px, 9999px, 100px, 0); }
+  100% { clip: rect(14px, 9999px, 33px, 0); }
+}
