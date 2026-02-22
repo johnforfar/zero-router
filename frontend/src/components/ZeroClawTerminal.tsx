@@ -31,7 +31,7 @@ export function ZeroClawTerminal() {
   const rollupScrollRef = useRef<HTMLDivElement>(null);
 
   const COST_PER_TOKEN = 0.0001;
-  const demoWallet = process.env.NEXT_PUBLIC_DEMO_WALLET || "2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm";
+  const demoWallet = process.env.NEXT_PUBLIC_DEMO_WALLET;
   const isDemoMode = !connected;
 
   // Initialize REAL logs
@@ -39,7 +39,8 @@ export function ZeroClawTerminal() {
     const initRealLogs = async () => {
         setZeroclawLogs(["--- Connecting to ZeroClaw Core ---"]);
         try {
-            const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL || "https://zerorouter-gateway-508521387980.us-central1.run.app";
+            const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL;
+            if (!apiBase) throw new Error("API URL not configured");
             const response = await fetch(`${apiBase}/v1/cmd`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -117,7 +118,8 @@ export function ZeroClawTerminal() {
     }
 
     try {
-      const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL || "https://zerorouter-gateway-508521387980.us-central1.run.app";
+      const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL;
+      if (!apiBase) throw new Error("API URL not configured");
       const response = await fetch(`${apiBase}/v1/chat/completions`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -174,7 +176,8 @@ export function ZeroClawTerminal() {
   const processZeroClawCmd = async (cmd: string) => {
     setIsTyping(true);
     try {
-        const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL || "https://zerorouter-gateway-508521387980.us-central1.run.app";
+        const apiBase = process.env.NEXT_PUBLIC_ZEROROUTER_API_URL;
+        if (!apiBase) throw new Error("API URL not configured");
         const response = await fetch(`${apiBase}/v1/cmd`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },

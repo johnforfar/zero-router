@@ -46,16 +46,19 @@ For high-throughput requirements, ZeroRouter supports **vLLM** as an alternative
 ## 🚀 Devnet Demo Handshake
 The system is pre-configured for a **Zero-Friction Demo**. 
 
-### 🧪 DEVNET DEMO WALLET
-Fund this wallet to test the live grid without connecting your own:
-**Public Key**: `2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm`
+### 📺 Live Branding
+-   **Main Site**: **[https://zerorouter.xyz](https://zerorouter.xyz)**
+-   **API Endpoint**: **[https://api.zerorouter.xyz](https://api.zerorouter.xyz)**
+-   **Status**: Managed via Cloudflare with full SSL/TLS encryption.
 
-### Handshake Command:
-```bash
-zeroclaw doctor
-```
-*Execute this in the dashboard terminal to verify the live connection to the cloud engine.*
+### 🧪 DEVNET DEMO WALLET
+- **Public Key**: `2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm`
+- **Setup**: I have configured the protocol to show this as the default demo wallet. Fund this address on devnet to activate the live state-settlement visualization.
+
+### 🛡️ Production & DevOps
+- **CI/CD**: Automated GitHub Actions deploy code from `main` branch to GCP.
+- **Privacy**: Zero hardcoded keys in the source. All secrets are managed via **GitHub Secrets** and **Cloud Run Environment Variables**.
+- **Stability**: On-Demand GCE Inference with Reserved Static IP.
 
 ---
-Built with 🦀 and ⚡ for the Sovereign Agent Economy.
 © 2026 ZeroRouter Protocol.

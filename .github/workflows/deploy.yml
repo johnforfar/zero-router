@@ -52,7 +52,7 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "OLLAMA_URL=http://INTERNAL_GCE_IP:11434"
+            --set-env-vars "OLLAMA_URL=http://10.128.0.42:11434"
 
       - name: Deploy Frontend
         run: |
@@ -61,4 +61,4 @@ jobs:
             --region ${{ env.REGION }} \
             --platform managed \
             --allow-unauthenticated \
-            --set-env-vars "NEXT_PUBLIC_ZEROROUTER_API_URL=https://zerorouter-gateway-508521387980.us-central1.run.app,NEXT_PUBLIC_DEMO_WALLET=2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm"
+            --set-env-vars "NEXT_PUBLIC_ZEROROUTER_API_URL=https://api.zerorouter.xyz,NEXT_PUBLIC_DEMO_WALLET=2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm"
