@@ -65,8 +65,9 @@ export default function LandingPage() {
           </div>
           
           {/* Title */}
-          <h1 className="hero-title text-white mb-8 mx-auto max-w-5xl text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none">
+          <h1 className="hero-title text-white mb-8 mx-auto max-w-5xl text-6xl md:text-8xl lg:text-[120px] font-black uppercase tracking-tighter leading-[0.85]">
             AI Inference <br/> 
+            <span className="text-slate-500 text-4xl md:text-6xl block my-4 lowercase italic font-light tracking-normal">at the</span>
             <span className="text-gradient-solana block mt-2 tracking-widest">Speed of Light</span>
           </h1>
           
