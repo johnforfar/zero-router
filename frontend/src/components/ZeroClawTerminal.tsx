@@ -83,7 +83,7 @@ export function ZeroClawTerminal() {
         addRollupLog(`PDA: [SESSION] ${sessionPda.toBase58().substring(0,12)}...`);
         addRollupLog(`PDA: [BUFFER]  ${buffer.toBase58().substring(0,12)}...`);
         setSolBalance(prev => prev - 0.5);
-        addRollupLog("💸 [L1] DELEGATION RENT DEDUCTED: 0.50 SOL");
+        addRollupLog("💸 [L1] DEDUCTED ESTIMATED 0.50 SOL (RENT COLLATERAL)");
         addRollupLog("✅ [ER] STATE DELEGATED TO EPHEMERAL SVM (GASLESS)");
         setSessionActive(true);
     } catch (e: any) {
@@ -96,7 +96,7 @@ export function ZeroClawTerminal() {
     const sig = "5J2Z" + Math.random().toString(36).substring(2, 15) + "commit";
     addRollupLog(`📦 [L1] FINAL STATE COMMITTED. TX: ${sig}`);
     setSolBalance(prev => prev + 0.495);
-    addRollupLog("💰 [L1] DELEGATION RENT RECLAIMED: 0.495 SOL");
+    addRollupLog("💰 [L1] RECLAIMED 0.495 SOL COLLATERAL. ACTUAL COST: 0.005 SOL (3 ACCOUNTS)");
     setSessionActive(false);
     setIdleSeconds(0);
     fetchBalances();

@@ -1,16 +1,20 @@
 "use client";
 
-import React from "react";
-import { Zap, Shield, Cpu, Github, ArrowRight, Globe, Lock, Layers, HardDrive, RefreshCw, Terminal as TerminalIcon } from "lucide-react";
+import React, { useState } from "react";
+import { Zap, Shield, Cpu, Github, ArrowRight, Globe, Lock, Layers, HardDrive, RefreshCw, Terminal as TerminalIcon, Book } from "lucide-react";
 import { LaunchButton } from "@/components/LaunchButton";
 import { Console } from "@/components/Console";
 import { ZeroClawTerminal } from "@/components/ZeroClawTerminal";
-
 import { WalletStatus } from "@/components/WalletStatus";
+import { DocsModal } from "@/components/DocsModal";
 
 export default function LandingPage() {
+  const [isDocsOpen, setIsDocsOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-black text-slate-200 font-sans selection:bg-[#00C2FF]/30 overflow-x-hidden relative">
+      <DocsModal isOpen={isDocsOpen} onClose={() => setIsDocsOpen(false)} />
+      
       {/* Scanlines Overlay */}
       <div className="scanlines"></div>
       
@@ -34,15 +38,11 @@ export default function LandingPage() {
           
           <div className="hidden lg:flex items-center gap-12">
             <nav className="flex gap-8 items-center text-xs font-bold uppercase tracking-widest text-slate-400">
-                {["Skills", "Ethos", "Docs"].map((item) => (
-                <a 
-                    key={item} 
-                    href={`#${item.toLowerCase()}`} 
-                    className="hover:text-[#00C2FF] hover:shadow-[0_0_10px_rgba(0,194,255,0.5)] transition-all duration-300"
-                >
-                    {item}
-                </a>
-                ))}
+                <a href="#skills" className="hover:text-[#00C2FF] transition-all">Skills</a>
+                <a href="#ethos" className="hover:text-[#00C2FF] transition-all">Ethos</a>
+                <button onClick={() => setIsDocsOpen(true)} className="hover:text-[#00C2FF] flex items-center gap-1.5 transition-all uppercase">
+                    <Book size={12} /> Protocol Docs
+                </button>
             </nav>
             
             <div className="h-6 w-[1px] bg-white/10 mx-2"></div>
@@ -65,9 +65,9 @@ export default function LandingPage() {
           </div>
           
           {/* Title */}
-          <h1 className="hero-title text-white mb-8 mx-auto max-w-5xl">
+          <h1 className="hero-title text-white mb-8 mx-auto max-w-5xl text-5xl md:text-7xl font-black uppercase tracking-tighter leading-none">
             AI Inference <br/> 
-            <span className="text-gradient-solana block mt-2">Speed of Light</span>
+            <span className="text-gradient-solana block mt-2 tracking-widest">Speed of Light</span>
           </h1>
           
           {/* Subtitle */}
@@ -78,14 +78,14 @@ export default function LandingPage() {
 
           {/* Buttons */}
           <div className="flex flex-col md:flex-row gap-6 justify-center items-center mb-32">
-            <button className="btn-primary group">
+            <button onClick={() => setIsDocsOpen(true)} className="btn-primary group px-8 py-4 bg-[#14F195] text-black font-black uppercase tracking-widest rounded-lg flex items-center gap-2 hover:shadow-[0_0_30px_rgba(20,241,149,0.4)] transition-all">
               Start Building 
               <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
             </button>
-            <button className="btn-secondary group">
+            <a href="https://github.com/johnforfar/zero-router" target="_blank" rel="noopener noreferrer" className="btn-secondary group px-8 py-4 border border-white/10 hover:bg-white/5 rounded-lg flex items-center gap-2 transition-all">
               <Github size={18} /> 
               View Source
-            </button>
+            </a>
           </div>
 
           {/* Terminal */}
@@ -127,16 +127,13 @@ export default function LandingPage() {
                 { title: "Pyth Oracle", desc: "Stream price feeds.", icon: "🔮", color: "text-[#9945FF]", border: "hover:border-[#9945FF]/50" },
                 { title: "Metaplex NFT", desc: "Mint and manage NFTs.", icon: "🖼️", color: "text-[#FF00FF]", border: "hover:border-[#FF00FF]/50" }
               ].map((skill, i) => (
-                <div key={skill.title} className={`p-8 glass-card group cursor-pointer ${skill.border}`}>
+                <div key={skill.title} className={`p-8 glass-card group cursor-pointer bg-slate-900/10 border border-white/5 relative ${skill.border}`}>
                   <div className="absolute top-4 right-4 text-[10px] font-mono opacity-30 group-hover:opacity-100 transition-opacity">
                     0{i+1}
                   </div>
                   <div className="text-5xl mb-8 group-hover:scale-110 transition-transform duration-300">{skill.icon}</div>
                   <h3 className={`text-xl font-black mb-3 uppercase tracking-tight ${skill.color}`}>{skill.title}</h3>
                   <p className="text-slate-400 text-sm leading-relaxed font-mono">{skill.desc}</p>
-                  <div className="mt-6 flex items-center text-xs font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all transform translate-y-2 group-hover:translate-y-0">
-                    <span className="mr-2">Install</span> <ArrowRight size={12} />
-                  </div>
                 </div>
               ))}
             </div>
@@ -145,9 +142,6 @@ export default function LandingPage() {
 
         {/* Ethos */}
         <section id="ethos" className="py-32 px-6 border-t border-white/5 bg-black relative overflow-hidden">
-           {/* Animated Background Elements */}
-           <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-[#00C2FF]/5 to-transparent"></div>
-           
           <div className="max-w-7xl mx-auto relative z-10">
             <div className="text-center mb-24">
               <h2 className="text-5xl md:text-8xl font-black text-white mb-8 tracking-tighter uppercase glitch" data-text="ZEROCLAW ETHOS">
@@ -157,22 +151,18 @@ export default function LandingPage() {
                 Lightweight infrastructure for modern AI.
               </p>
             </div>
-            
             <div className="grid md:grid-cols-3 gap-8">
               {[
                 { title: "Blazing Fast", desc: "Cold start < 10ms. No containers. Just WASM.", icon: <Zap size={32} />, color: "text-[#14F195]" },
                 { title: "Ultra Light", desc: "3.4MB binary. Runs anywhere. Edge compatible.", icon: <HardDrive size={32} />, color: "text-[#00C2FF]" },
                 { title: "Pluggable", desc: "Trait-based system. Hot-swappable modules.", icon: <Layers size={32} />, color: "text-[#9945FF]" },
               ].map((item, i) => (
-                <div key={item.title} className="bg-slate-900/20 border border-white/5 p-10 hover:bg-slate-900/40 transition-colors relative group overflow-hidden">
+                <div key={item.title} className="bg-slate-900/20 border border-white/5 p-10 hover:bg-slate-900/40 transition-colors relative group overflow-hidden rounded-xl">
                   <div className={`mb-6 ${item.color} group-hover:scale-110 transition-transform duration-300`}>
                     {item.icon}
                   </div>
                   <h3 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter">{item.title}</h3>
                   <p className="text-slate-400 leading-relaxed font-mono text-sm">{item.desc}</p>
-                  
-                  {/* Hover Corner Effect */}
-                  <div className={`absolute bottom-0 right-0 w-0 h-0 border-b-[40px] border-r-[40px] border-b-transparent border-r-transparent transition-all duration-300 opacity-20`}></div>
                 </div>
               ))}
             </div>
@@ -181,7 +171,7 @@ export default function LandingPage() {
 
         <footer className="py-12 border-t border-white/10 bg-black text-center">
             <p className="text-slate-600 font-mono text-xs uppercase tracking-widest">
-                © 2026 ZeroClaw Labs. All systems operational.
+                © 2026 ZeroRouter Protocol. All systems operational.
             </p>
         </footer>
       </main>

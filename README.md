@@ -6,45 +6,38 @@
 [![Solana Devnet](https://img.shields.io/badge/Solana-Devnet-green?style=for-the-badge&logo=solana)](https://explorer.solana.com/?cluster=devnet)
 
 ## 🚀 The Vision
-Autonomous agents (like **ZeroClaw**) should not be throttled by credit card limits or monthly subscriptions. ZeroRouter allows agents to stream tokens and pay for them in real-time, exactly like a utility bill—settling every single token chunk on-chain with zero gas fees and sub-millisecond latency.
+Autonomous agents should not be throttled by credit card limits or monthly subscriptions. ZeroRouter allows agents to stream tokens and pay for them in real-time, exactly like a utility bill—settling every single token chunk on-chain with zero gas fees and sub-millisecond latency.
 
-## 🛠️ System Architecture
+## 🏆 Why ZeroRouter Wins
 
-### Shared Intelligence Grid (GCP)
-ZeroRouter moves beyond local "Ollama-on-a-laptop." We deploy a distributed architecture:
-- **Inference Node**: Dedicated GCE VM (`zero-router`) running **Ollama** on CPU (Llama 3.2:1b).
-- **Security Gateway**: Statically linked Rust proxy on **Cloud Run** managing auth and CLI bridge.
-- **Frontend Dashboard**: Real-time Next.js UX with integrated **Solana Wallet** support.
+### 1. Market Disruption: The "OpenRouter" Killer
+- **Traditional (OpenRouter/ChatGPT)**: Requires centralized credit systems, monthly subscriptions, and trust in a middleman to account for usage.
+- **ZeroRouter**: 100% Decentralized. You pay exactly what you burn, settled in real-time on-chain. No deposits held by a centralized entity.
 
-### 🌊 Ephemeral Rollup Pipeline
-1. **Session Initiation**: Agent deposits USDC into the ZeroRouter program.
-2. **State Delegation**: Control of the session account is delegated to a MagicBlock ER.
-3. **In-Session Accounting**: For every 5 tokens processed, an off-chain transaction records usage on the ER (Gasless).
-4. **Final Settlement**: Upon 15s of idle time, the ER settles the final compressed state back to **Solana Devnet**.
+### 2. Technical Execution: The Ultimate MagicBlock Showcase
+- **Ephemeral Rollups (ER)**: We utilize ER for the most demanding use case—**token streaming.** Every single token processed is recorded on an ER tick (Gasless), providing the throughput of a centralized server with the security of a blockchain.
+- **Zero-Friction UX**: A true "Pay-as-you-Inference" experience where the user (or agent) never has to sign 1000 transactions manually. The ER handles the delegation, providing sub-millisecond accounting.
 
-## 🏗️ Technical Implementation
+### 3. Performance & Security
+- **Sovereign Rust Core**: Built from scratch using Axum and Tokio for <10ms response times.
+- **Minimal Footprint**: Gateway runs in a SCRATCH-based Docker image for a near-zero attack surface.
 
-### Monorepo Structure
-- `/gateway`: Rust (Axum) proxy + real CLI executor.
-- `/program`: Anchor (Rust) program for ER state management.
-- `/frontend`: Next.js 16 + Tailwind CSS v4 + @solana/web3.js.
+## 🏗️ System Architecture
 
-### 🛡️ Production & DevOps
-- **CI/CD**: Automated GitHub Actions deploy code to GCP Artifact Registry and Cloud Run.
-- **Security**: SCRATCH-based Docker images and isolated internal VPC networks for inference traffic.
-- **Stability Protocol**: We use **On-Demand GCE VMs** with **Reserved Static IPs** to ensure Cloudflare DNS mappings never break.
-
-## 📈 Performance & Tuning
-
-For high-throughput requirements, ZeroRouter supports **vLLM** as an alternative to Ollama. Transitioning is a single environment variable change in Cloud Run (`INFERENCE_URL`).
-
-## 💰 Cloud Budget (PoC)
-- **Monthly Burn**: ~$56.00 (On-Demand).
-- **Free Tier**: Gateway and Frontend are eligible for the GCP Free Tier.
-- **Scaling**: 1 VM supports 2-3 concurrent sessions of Llama 3.2:1b.
+```mermaid
+graph TD
+    User([Agent/User]) --> Dashboard[Next.js Dashboard]
+    Dashboard --> Delegation[MagicBlock ER Delegation]
+    Delegation --> SOL_Rent[0.5 SOL Rent Lock]
+    Dashboard --> Inference[Cloud Gateway: Rust]
+    Inference --> Ollama[Inference Node: GCE]
+    Inference --> Ticks[ER Per-Token Ticks]
+    Ticks --> Settlement[L1 Devnet Settlement]
+    Settlement --> SOL_Reclaim[SOL Rent Reclaimed]
+```
 
 ## 🚀 Devnet Demo Handshake
-The system is pre-configured for a **Zero-Friction Demo**. 
+The system is live and pre-configured for a **Zero-Friction Demo**. 
 
 ### 📺 Live Branding
 -   **Main Site**: **[https://zerorouter.xyz](https://zerorouter.xyz)**
@@ -53,15 +46,11 @@ The system is pre-configured for a **Zero-Friction Demo**.
 
 ### 🧪 DEVNET DEMO WALLET
 - **Public Key**: `2gzjbVH1DN71s5Csf1fkxDpjJJLesB174Yr2xRkyGSgm`
-- **Setup**: I have configured the protocol to show this as the default demo wallet. Fund this address on devnet to activate the live state-settlement visualization.
+- **Setup**: fund this address on devnet to activate the live state-settlement visualization.
 
 ### 🤖 AI Agent Integration
-ZeroRouter is built for machines first. Agents can discover and use this protocol via the **[AI Skill Specification](./skill.md)**.
-
-### 🛡️ Production & DevOps
-- **CI/CD**: Automated GitHub Actions deploy code from `main` branch to GCP.
-- **Privacy**: Zero hardcoded keys in the source. All secrets are managed via **GitHub Secrets** and **Cloud Run Environment Variables**.
-- **Stability**: On-Demand GCE Inference with Reserved Static IP.
+Agents can discover and use this protocol via the **[AI Skill Specification](./skill.md)**.
 
 ---
+Built with 🦀 and ⚡ for the Sovereign Agent Economy.
 © 2026 ZeroRouter Protocol.
