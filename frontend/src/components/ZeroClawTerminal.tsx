@@ -6,7 +6,8 @@ import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Connection, PublicKey, LAMPORTS_PER_SOL, Transaction, SystemProgram, Keypair } from "@solana/web3.js";
 import { signTransactionServer } from "@/app/actions";
 import ReactMarkdown from "react-markdown";
-import { PayStreamClient, DemoWallet } from "@/utils/magic";
+import { PayStreamClient, DemoWallet, PAYSTREAM_PROGRAM_ID } from "@/utils/magic";
+import { delegationRecordPdaFromDelegatedAccount } from "@magicblock-labs/ephemeral-rollups-sdk";
 
 interface LedgerEntry {
   id: string;
@@ -263,37 +264,51 @@ export function ZeroClawTerminal() {
         const userPubkey = new PublicKey(userAddr);
         const providerPubkey = new PublicKey(providerWallet);
 
-        // 1. Initialize Session (Deposit 100 USDC for now, or minimal)
-        // Rate: 100 (0.0001 USDC)
-        const initIx = await payStreamClient.initializeSession(userPubkey, providerPubkey, 1000000, 100); 
-        
-        const tx = new Transaction().add(initIx);
-        let sig = "";
-        
-        // Unified signing (works for both Connected Wallet and Demo Wallet)
-        const { blockhash } = await connection.getLatestBlockhash();
-        tx.recentBlockhash = blockhash;
-        tx.feePayer = payStreamClient.provider.wallet.publicKey;
-        
-        // Sign and Send
-        const signed = await payStreamClient.provider.wallet.signTransaction(tx);
-        sig = await connection.sendRawTransaction(signed.serialize());
+        // Derive Session PDA to check status
+        const [sessionPda] = PublicKey.findProgramAddressSync(
+            [Buffer.from("session_v1"), userPubkey.toBuffer(), providerPubkey.toBuffer()],
+            PAYSTREAM_PROGRAM_ID
+        );
+        payStreamClient.sessionPda = sessionPda;
+        payStreamClient.payerPubkey = userPubkey;
+        payStreamClient.providerPubkey = providerPubkey;
 
-        addLedgerEntry("tx", `✅ [L1] SESSION INITIALIZED. SIG: ${sig}`, sig);
+        const sessionInfo = await connection.getAccountInfo(sessionPda);
+        const isInitialized = sessionInfo !== null;
+
+        const delegationRecordPda = delegationRecordPdaFromDelegatedAccount(sessionPda);
+        const delegationInfo = await connection.getAccountInfo(delegationRecordPda);
+        const isDelegated = delegationInfo !== null;
+
+        if (isInitialized && isDelegated) {
+            addLedgerEntry("info", "⚡ [ER] SESSION ALREADY ACTIVE & DELEGATED.");
+            setSessionActive(true);
+            return;
+        }
+
+        const tx = new Transaction();
+
+        if (!isInitialized) {
+            addLedgerEntry("info", "🆕 [L1] INITIALIZING NEW SESSION...");
+            const initIx = await payStreamClient.initializeSession(userPubkey, providerPubkey, 1000000, 100);
+            tx.add(initIx);
+        }
+
+        if (!isDelegated) {
+            addLedgerEntry("info", `🔗 [L1] DELEGATING TO EPHEMERAL ROLLUP...`);
+            const delegateIx = await payStreamClient.delegateSession();
+            tx.add(delegateIx);
+        }
         
-        // 2. Delegate
-        addLedgerEntry("info", `🔗 [L1] DELEGATING TO EPHEMERAL ROLLUP...`);
-        const delegateIx = await payStreamClient.delegateSession();
-        const tx2 = new Transaction().add(delegateIx);
-        
-        const { blockhash: blockhash2 } = await connection.getLatestBlockhash();
-        tx2.recentBlockhash = blockhash2;
-        tx2.feePayer = payStreamClient.provider.wallet.publicKey;
-        
-        const signed2 = await payStreamClient.provider.wallet.signTransaction(tx2);
-        const sig2 = await connection.sendRawTransaction(signed2.serialize());
-        
-        addLedgerEntry("tx", `✅ [ER] STATE DELEGATED. SIG: ${sig2}`, sig2);
+        if (tx.instructions.length > 0) {
+            const { blockhash } = await connection.getLatestBlockhash();
+            tx.recentBlockhash = blockhash;
+            tx.feePayer = payStreamClient.provider.wallet.publicKey;
+            
+            const signed = await payStreamClient.provider.wallet.signTransaction(tx);
+            const sig = await connection.sendRawTransaction(signed.serialize());
+            addLedgerEntry("tx", `✅ [L1] SETUP COMPLETE. SIG: ${sig}`, sig);
+        }
 
         setSessionActive(true);
         closingRef.current = false;

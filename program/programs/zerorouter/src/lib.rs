@@ -1,6 +1,7 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer, Mint};
 use ephemeral_rollups_sdk::anchor::ephemeral;
+use ephemeral_rollups_sdk::cpi::DelegateConfig;
 
 declare_id!("8Wnd5SSnzjDrFY1Up1Lqwz4QZJvpQcMT3dimQAjZ561Z");
 
@@ -14,13 +15,12 @@ pub mod zerorouter {
         session.payer = ctx.accounts.payer.key();
         session.provider = ctx.accounts.provider.key();
         session.rate_per_token = rate;
-        session.accumulated_amount = 0;
-        session.total_deposited = amount; // Track total deposited for bounds checking
-        session.bump = ctx.bumps.session;
         session.is_active = true;
+        session.bump = ctx.bumps.session;
+        session.total_deposited = amount;
+        session.accumulated_amount = 0;
 
-        // Lock funds on L1
-        let cpi_ctx = CpiContext::new(
+        let transfer_ctx = CpiContext::new(
             ctx.accounts.token_program.to_account_info(),
             Transfer {
                 from: ctx.accounts.payer_token.to_account_info(),
@@ -28,33 +28,25 @@ pub mod zerorouter {
                 authority: ctx.accounts.payer.to_account_info(),
             },
         );
-        token::transfer(cpi_ctx, amount)?;
+        token::transfer(transfer_ctx, amount)?;
 
         Ok(())
     }
 
-    /// This instruction runs on the Ephemeral Rollup (ER)
-    /// It is called frequently (e.g. per second or per token)
     pub fn record_usage(ctx: Context<RecordUsage>, token_count: u64) -> Result<()> {
         let session = &mut ctx.accounts.session;
         require!(session.is_active, ZeroRouterError::SessionInactive);
-        
+
         let cost = token_count * session.rate_per_token;
-        
-        // Virtual Accounting Check (ensure we don't overspend the deposit)
         require!(
             session.accumulated_amount + cost <= session.total_deposited,
             ZeroRouterError::InsufficientFunds
         );
 
         session.accumulated_amount += cost;
-        
-        // We can emit an event here if needed, but for high-throughput, just state update is enough.
-        // msg!("Recorded usage: {} tokens. Cost: {}. New Total: {}", token_count, cost, session.accumulated_amount);
         Ok(())
     }
 
-    /// This instruction runs on L1 to settle the session
     pub fn close_session(ctx: Context<CloseSession>) -> Result<()> {
         let session = &ctx.accounts.session;
         
@@ -66,7 +58,6 @@ pub mod zerorouter {
         ];
         let signer = &[&seeds[..]];
 
-        // 1. Pay Provider (Accumulated Amount)
         if session.accumulated_amount > 0 {
             let transfer_provider_ctx = CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -80,9 +71,7 @@ pub mod zerorouter {
             token::transfer(transfer_provider_ctx, session.accumulated_amount)?;
         }
 
-        // 2. Refund Payer (Remaining)
         let remaining = ctx.accounts.vault.amount; 
-        
         if remaining > 0 {
             let transfer_payer_ctx = CpiContext::new_with_signer(
                 ctx.accounts.token_program.to_account_info(),
@@ -98,6 +87,25 @@ pub mod zerorouter {
 
         Ok(())
     }
+
+    pub fn delegate(ctx: Context<DelegateInput>) -> Result<()> {
+        let payer_key = ctx.accounts.payer.key();
+        let provider_key = ctx.accounts.provider.key();
+
+        let seeds: &[&[u8]] = &[
+            b"session_v1",
+            payer_key.as_ref(),
+            provider_key.as_ref(),
+        ];
+
+        ctx.accounts.delegate_pda(
+            &ctx.accounts.payer,
+            seeds,
+            DelegateConfig::default(),
+        )?;
+
+        Ok(())
+    }
 }
 
 #[derive(Accounts)]
@@ -105,13 +113,13 @@ pub struct InitializeSession<'info> {
     #[account(
         init, 
         payer = payer, 
-        space = 8 + 32 + 32 + 8 + 8 + 8 + 1 + 1, // Added space for bool and total_deposited
+        space = 8 + 32 + 32 + 8 + 8 + 8 + 1 + 1,
         seeds = [b"session_v1", payer.key().as_ref(), provider.key().as_ref()],
         bump
     )]
     pub session: Account<'info, SessionAccount>,
     #[account(
-        init_if_needed,
+        init,
         payer = payer,
         token::mint = mint,
         token::authority = session,
@@ -123,11 +131,11 @@ pub struct InitializeSession<'info> {
     pub payer: Signer<'info>,
     /// CHECK: Provider address
     pub provider: UncheckedAccount<'info>,
+    pub mint: Account<'info, Mint>,
     #[account(mut)]
     pub payer_token: Account<'info, TokenAccount>,
-    pub mint: Account<'info, Mint>,
-    pub token_program: Program<'info, Token>,
     pub system_program: Program<'info, System>,
+    pub token_program: Program<'info, Token>,
 }
 
 #[derive(Accounts)]
@@ -144,9 +152,9 @@ pub struct RecordUsage<'info> {
 pub struct CloseSession<'info> {
     #[account(
         mut,
+        close = payer,
         seeds = [b"session_v1", session.payer.as_ref(), session.provider.as_ref()],
-        bump = session.bump,
-        close = payer // Close the account and return rent to payer
+        bump = session.bump
     )]
     pub session: Account<'info, SessionAccount>,
     #[account(
@@ -156,16 +164,28 @@ pub struct CloseSession<'info> {
     )]
     pub vault: Account<'info, TokenAccount>,
     #[account(mut)]
-    pub payer: Signer<'info>, // The one closing needs to sign (or the provider could close?) 
-                              // Ideally, the authority should be checked. 
-                              // For now, let's say only payer can close to get refund, 
-                              // or maybe provider can close too? 
-                              // In PayStream, usually payer initiates close.
+    pub payer: Signer<'info>,
     #[account(mut)]
     pub provider_token: Account<'info, TokenAccount>,
     #[account(mut)]
     pub payer_token: Account<'info, TokenAccount>,
     pub token_program: Program<'info, Token>,
+}
+
+#[ephemeral_rollups_sdk::anchor::delegate]
+#[derive(Accounts)]
+pub struct DelegateInput<'info> {
+    pub payer: Signer<'info>,
+    #[account(
+        mut,
+        seeds = [b"session_v1", payer.key().as_ref(), provider.key().as_ref()],
+        bump = pda.bump,
+        del
+    )]
+    pub pda: Account<'info, SessionAccount>,
+    /// CHECK: Provider used for seed verification
+    pub provider: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
 }
 
 #[account]

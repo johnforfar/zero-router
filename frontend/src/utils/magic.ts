@@ -69,28 +69,16 @@ const IDL: any = {
         "discriminator": [90, 147, 75, 178, 85, 88, 4, 137],
         "accounts": [
             { "name": "payer", "writable": true, "signer": true },
-            { "name": "pda", "writable": false, "signer": false },
-            { "name": "owner", "writable": false, "signer": false },
+            { "name": "provider", "writable": false, "signer": false },
+            { "name": "pda", "writable": true, "signer": false },
+            { "name": "owner_program", "writable": false, "signer": false },
             { "name": "buffer", "writable": true, "signer": false },
-            { "name": "delegationRecord", "writable": true, "signer": false },
-            { "name": "delegationMetadata", "writable": true, "signer": false },
-            { "name": "delegationProgram", "writable": false, "signer": false },
-            { "name": "systemProgram", "writable": false, "signer": false }
+            { "name": "delegation_record", "writable": true, "signer": false },
+            { "name": "delegation_metadata", "writable": true, "signer": false },
+            { "name": "delegation_program", "writable": false, "signer": false },
+            { "name": "system_program", "writable": false, "signer": false }
         ],
         "args": []
-    },
-    {
-      "name": "process_undelegation",
-      "discriminator": [196, 28, 41, 206, 48, 37, 51, 167],
-      "accounts": [
-        { "name": "base_account", "writable": true },
-        { "name": "buffer", "writable": false },
-        { "name": "payer", "writable": true },
-        { "name": "system_program", "writable": false }
-      ],
-      "args": [
-        { "name": "account_seeds", "type": { "vec": "bytes" } }
-      ]
     }
   ],
   "accounts": [
@@ -132,13 +120,11 @@ export class DemoWallet implements Wallet {
     }
 
     async signTransaction<T extends Transaction | VersionedTransaction>(tx: T): Promise<T> {
-        // Serialize, send to server, get back signed base64, deserialize
         if (tx instanceof Transaction) {
             const serialized = tx.serialize({ requireAllSignatures: false, verifySignatures: false }).toString('base64');
             const signedBase64 = await signTransactionServer(serialized);
             return Transaction.from(Buffer.from(signedBase64, 'base64')) as T;
         }
-        // VersionedTransaction support if needed
         throw new Error("VersionedTransaction not supported in DemoWallet yet");
     }
 
@@ -201,8 +187,21 @@ export class PayStreamClient {
           .instruction();
   }
 
+  async isSessionInitialized(payer: PublicKey, provider: PublicKey): Promise<boolean> {
+      const [sessionPda] = PublicKey.findProgramAddressSync(
+          [Buffer.from("session_v1"), payer.toBuffer(), provider.toBuffer()],
+          PAYSTREAM_PROGRAM_ID
+      );
+      try {
+          const account = await (this.program.account as any).SessionAccount.fetchNullable(sessionPda);
+          return account !== null;
+      } catch (e) {
+          return false;
+      }
+  }
+
   async delegateSession() {
-      if (!this.sessionPda || !this.payerPubkey) throw new Error("Session not initialized");
+      if (!this.sessionPda || !this.payerPubkey || !this.providerPubkey) throw new Error("Session not initialized");
 
       const bufferPda = delegateBufferPdaFromDelegatedAccountAndOwnerProgram(
         this.sessionPda,
@@ -218,8 +217,9 @@ export class PayStreamClient {
       return this.program.methods.delegate()
         .accounts({
             payer: this.payerPubkey,
+            provider: this.providerPubkey,
             pda: this.sessionPda,
-            owner: PAYSTREAM_PROGRAM_ID,
+            ownerProgram: PAYSTREAM_PROGRAM_ID,
             buffer: bufferPda,
             delegationRecord: delegationRecord,
             delegationMetadata: delegationMetadata,
@@ -249,8 +249,8 @@ export class PayStreamClient {
         PAYSTREAM_PROGRAM_ID
     );
 
-      const payerToken = getAssociatedTokenAddressSync(USDC_DEVNET, payer);
-      const providerToken = getAssociatedTokenAddressSync(USDC_DEVNET, provider);
+    const providerToken = getAssociatedTokenAddressSync(USDC_DEVNET, provider);
+    const payerToken = getAssociatedTokenAddressSync(USDC_DEVNET, payer);
 
       return this.program.methods.closeSession()
           .accounts({
