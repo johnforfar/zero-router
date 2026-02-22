@@ -75,14 +75,14 @@ const IDL: any = {
         "discriminator": [90, 147, 75, 178, 85, 88, 4, 137],
         "accounts": [
             { "name": "payer", "writable": true, "signer": true },
-            { "name": "host", "writable": false },
             { "name": "bufferPda", "writable": true },
-            { "name": "pda", "writable": true },
             { "name": "delegationRecordPda", "writable": true },
             { "name": "delegationMetadataPda", "writable": true },
-            { "name": "delegationProgram", "address": DELEGATION_PROGRAM_ID.toBase58() },
+            { "name": "pda", "writable": true },
+            { "name": "host", "writable": false },
             { "name": "systemProgram", "address": "11111111111111111111111111111111" },
-            { "name": "ownerProgram", "address": PAYSTREAM_PROGRAM_ID.toBase58() }
+            { "name": "ownerProgram", "address": PAYSTREAM_PROGRAM_ID.toBase58() },
+            { "name": "delegationProgram", "address": DELEGATION_PROGRAM_ID.toBase58() }
         ],
         "args": []
     }
@@ -155,7 +155,7 @@ export class PayStreamClient {
       const [sessionPda] = PublicKey.findProgramAddressSync([Buffer.from("session_final_v1"), payer.toBuffer(), host.toBuffer()], PAYSTREAM_PROGRAM_ID);
       this.sessionPda = sessionPda;
       const [vaultPda] = PublicKey.findProgramAddressSync([Buffer.from("vault"), sessionPda.toBuffer()], PAYSTREAM_PROGRAM_ID);
-      const payerToken = getAssociatedTokenAddressSync(USDC_DEVNET, payer);
+      const payerToken = getAssociatedTokenAddressSync(USDC_DEVNET, payer, true);
       
       const ix = await this.program.methods.initializeStream(new BN(rate), new BN(amount))
           .accounts({
@@ -222,16 +222,16 @@ export class PayStreamClient {
   async closeSession(payer: PublicKey, host: PublicKey) {
       const [sessionPda] = PublicKey.findProgramAddressSync([Buffer.from("session_final_v1"), payer.toBuffer(), host.toBuffer()], PAYSTREAM_PROGRAM_ID);
       const [vaultPda] = PublicKey.findProgramAddressSync([Buffer.from("vault"), sessionPda.toBuffer()], PAYSTREAM_PROGRAM_ID);
-      const hostToken = getAssociatedTokenAddressSync(USDC_DEVNET, host);
-      const payerToken = getAssociatedTokenAddressSync(USDC_DEVNET, payer);
+      const hostToken = getAssociatedTokenAddressSync(USDC_DEVNET, host, true);
+      const payerToken = getAssociatedTokenAddressSync(USDC_DEVNET, payer, true);
       const ix = await this.program.methods.closeStream()
           .accounts({
               session: sessionPda,
               vault: vaultPda,
-              host_token: hostToken,
+              hostToken: hostToken,
               payer: payer,
-              payer_token: payerToken,
-              token_program: TOKEN_PROGRAM_ID,
+              payerToken: payerToken,
+              tokenProgram: TOKEN_PROGRAM_ID,
           } as any)
           .instruction();
       ix.programId = PAYSTREAM_PROGRAM_ID;

@@ -403,9 +403,14 @@ export function ZeroClawTerminal() {
                   
                   // Handle Protocol Setup Links from Server
                   if (data.status === "SETUP_COMPLETE") {
+                      // CRITICAL: Update local client state with server-derived PDA to prevent "Session not initialized"
+                      if (payStreamClient && data.session.pda) {
+                          payStreamClient.sessionPda = new PublicKey(data.session.pda);
+                      }
+
                       if (data.session.l1Sig) {
                           if (data.session.l1Sig === "ALREADY_DELEGATED") {
-                              addLedgerEntry("info", `♻️ [L1] REUSING ACTIVE SESSION | PDA: ${data.session.pda.substring(0, 8)}...`);
+                              addLedgerEntry("tx", `♻️ [L1] REUSING ACTIVE SESSION`, data.session.pda); // Use PDA as "signature" for link
                           } else {
                               addLedgerEntry("tx", `✅ [L1] SESSION INITIALIZED`, data.session.l1Sig);
                           }
@@ -544,7 +549,16 @@ export function ZeroClawTerminal() {
                 </a>
                 <div className="flex items-center space-x-2">
                     <Activity size={14} className={sessionActive ? "text-green-500 animate-pulse" : "text-gray-400"} />
-                    <span className={sessionActive ? "text-green-500 font-bold" : "text-gray-400"}>{sessionActive ? "UPLINK_ACTIVE" : "STANDBY"}</span>
+                    <span className={sessionActive ? "text-green-500 font-bold" : "text-gray-400"}>
+                        {sessionActive ? (
+                            <span className="flex items-center gap-2">
+                                UPLINK_ACTIVE
+                                <span className="bg-blue-500/20 text-blue-400 px-1.5 py-0.5 rounded text-[9px] border border-blue-500/30">
+                                    AUTO-SETTLE: {15 - idleSeconds}s
+                                </span>
+                            </span>
+                        ) : "STANDBY"}
+                    </span>
                 </div>
                  <button 
                     onClick={() => setIsDarkMode(!isDarkMode)} 
@@ -659,7 +673,10 @@ export function ZeroClawTerminal() {
                                             <a
                                                 href={entry.type === "settlement"
                                                     ? `https://explorer.solana.com/tx/${entry.sig}?cluster=custom&customUrl=https%3A%2F%2Fdevnet-as.magicblock.app`
-                                                    : `https://solscan.io/tx/${entry.sig}?cluster=devnet`
+                                                    : (entry.sig.length < 50
+                                                        ? `https://solscan.io/account/${entry.sig}?cluster=devnet`
+                                                        : `https://solscan.io/tx/${entry.sig}?cluster=devnet`
+                                                      )
                                                 }
                                                 target="_blank"
                                                 rel="noopener noreferrer"
